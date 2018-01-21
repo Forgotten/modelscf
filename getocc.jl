@@ -1,4 +1,4 @@
-function [occ,efermi] = get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64);
+function get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64);
 #
 # usage: [occ,efermi] = getocc(ev, nocc, Tbeta);
 #
@@ -51,7 +51,7 @@ if (nev > nocc)
    occ = fermidirac(ev,efermi,Tbeta);
    occsum = sum(occ);
    iter = 1;
-   while ( abs(occsum-nocc) > tol & iter < maxiter )
+   while (abs(occsum-nocc) > tol && iter < maxiter )
       # fprintf('iter = #d, efermi = #11.3e, sum = #11.3e\n', ...
                # iter, efermi, occsum);
       # fprintf('lb = #11.3e, ub = #11.3e\n', lb, ub);
@@ -68,11 +68,14 @@ if (nev > nocc)
 elseif (nev == nocc)
    occ    = ones(nocc,1);
    efermi = ev[nocc];
-else
+else # if (nev <= nocc)
    occ = [];
    efermi = 0;
    error('The number of eigenvalues in ev should be larger than nocc');
-end;
+end
+
+return (occ,efermi)
+end
 
 
 @inline function fermidirac(ev,efermi,Tbeta);
