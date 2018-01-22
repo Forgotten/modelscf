@@ -1,27 +1,29 @@
-struct Ham
+mutable struct Ham
     Ns::Int64
     Ls::Float64
-    kmul ## ::Array{Float64,2} wait until everything is clearer
+    kmul::Array{Float64,2} # wait until everything is clearer
     dx::Float64
-    gridpos
+    gridpos::Array{Float64,2}
     posstart
     posidx
     H                  # no idea what is this
-    lap
-    rhoa               # pseudo-charge for atoms (negative)
+    rhoa::Array{Float64,2}               # pseudo-charge for atoms (negative)
     rho                # electron density
     Vhar               # Hartree potential for both electron and nuclei
     Vtot               # total energy
-    drhoa              # derivative of the pseudo-charge
+    drhoa  # derivative of the pseudo-charge
     ev
     psi
     fermi
     occ
-    Neigs
+    nspin
+    Neigs::Int64    # QUESTION: Number of eigenvalues?
     atoms
     Eband              # Total band energy
     Fband              # Helmholtz band energy
     Ftot               # Total Helmholtz energy
+    YukawaK            # shift for the potential
+    epsil0
 
     function Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0)
         # QUESTION: what is n_extra?
@@ -31,7 +33,8 @@ struct Ham
         #
         dx = Ls / Ns;
         # defining the grid
-        gridpos = collect(0:Ns-1)'.*dx; #'
+        gridpos = zeros(Ns,1) # allocating as a 2D Array
+        gridpos[:,1] = collect(0:Ns-1).'.*dx; #'
         posstart = 0;
         posidx   = 0;
 
@@ -42,12 +45,12 @@ struct Ham
         Ls_glb = Ls;
         Ns_glb = Ns;
 
-        kx = vcat( collect(0:Ns/2-1), collect( -Ns/2:-1) )* 2 * pi / Ls;
+        # we define the Fourier multipliers as an 2D array
+        kx = zeros(Ns,1);
+        kx[:,1] = vcat( collect(0:Ns/2-1), collect( -Ns/2:-1) )* 2 * pi / Ls;
         kmul = kx.^2/2;
 
         rhoa = pseudocharge(gridpos, Ls_glb, atoms,YukawaK,epsil0);
-
-        rhoa  = rhoa;
 
         # TODO: we need to figure out the type of each of the fields to properlu
         # initialize them
@@ -63,10 +66,11 @@ struct Ham
         Eband = []
         Fband = []
         Ftot = []
+        nspin = 1;
 
-        new(Ns, Ls, kmul, gridpos, posstart, posidx, H, lap, rhoa,
-            rho, Vhar, Vtot, drhoa, ev, psi, fermi, occ, Neigs, atoms,
-            Eband, Fband, Ftot)
+        new(Ns, Ls, kmul, dx, gridpos, posstart, posidx, H, rhoa,
+            rho, Vhar, Vtot, drhoa, ev, psi, fermi, occ,nspin, Neigs, atoms,
+            Eband, Fband, Ftot, YukawaK, epsil0)
     end
 end
 
@@ -79,7 +83,8 @@ import Base.eltype
 import Base.size
 import Base.issymmetric
 
-function *(H::Ham, x::Array{Number,2})
+function *(H::Ham, x::Array{Float64,1})
+    # matvec overloading
     # Function  to  overload the application of the Hamiltonian times avector
     y_lap  = inv_lap(H,x);
     y_vtot = Vtot(H,x);
@@ -87,17 +92,26 @@ function *(H::Ham, x::Array{Number,2})
     return y_lap + y_vtot;
 end
 
-function At_mul_B(H::Ham, v)
-    return H*v
+# TODO: this should be optimized in order to take advantage of BLAS 3 operations
+function *(H::Ham, X::Array{Float64,2})
+    # Function  to  overload the application of the Hamiltonian times a matrix
+    Y = zeros(size(X));
+    A_mul_B!(Y, H, X)
+    return Y
 end
 
-function At_mul_B!(y, H::Ham, v)
-    # in place mat vec
-    y[:] = H*v
+
+function A_mul_B!(Y, H::Ham, V)
+    # in place matrix matrix multiplication
+    assert(size(Y) == size(V))
+    for ii = 1:size(V,2)
+        Y[:,ii] = H*V[:,ii]
+    end
+
 end
 
 function size(H::Ham)
-    return H.Ns
+    return (H.Ns, H.Ns)
 end
 
 function eltype(H::Ham)
@@ -106,72 +120,82 @@ function eltype(H::Ham)
     return typeof(1.0)
 end
 
-function issymmetric(H::test)
+function issymmetric(H::Ham)
     return true
 end
 
 
-function update_psi!(H::Ham, opts::eigOptions)
+function update_psi!(H::Ham, eigOpts::eigOptions)
     # we need to add some options to the update
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
-    if opts.eigmethod == "eigs"
+    if eigOpts.eigmethod == "eigs"
         # if eigenvalue method is eigs then use this
         ## we really need to take a look at the dependencies in here
-        opts.issym  = 1;
-        opts.isreal = 1;
-        opts.tol    = 1e-8;
-        opts.maxit  = 1000;
-
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
-        results = eigs(H, H.Ns, H.Neigs, opts);
-        assert(flag == 0);
+        (ev,psi,nconv,niter,nmult,resid) = eigs(H,   # Hamiltonian
+                                                nev=H.Neigs, # number of eigs
+                                                which=:SR, # small real part
+                                                ritzvec=true, # provide Ritz v
+                                                tol=eigOpts.eigstol, # tolerance
+                                                maxiter=eigOpts.eigsiter) #maxiter
+
+        #assert(flag == 0);
 
     end
-    ev = diag(ev);
 
-    #sorting the eigenvalues
+
+    # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev);
-    ev = ev[ind]
-    psi = psi(:, ind);
 
+    # updating the eigenvalues
+    H.ev = ev[ind]
+    # updating the eigenvectors
+    H.psi = psi[:, ind];
+
+
+end
+
+
+function update_rho!(H::Ham, nocc::Int64, Tbeta::Float64)
+
+    ev = H.ev;
     (occ, fermi) = get_occ(ev, nocc, Tbeta);
-    occ = occ * nspin;
-    rho = sum(psi.^2*diag(occ),2)/dx;
+    occ = occ * H.nspin;
+    rho = sum(H.psi.^2*diagm(occ),2)/H.dx;
 
     # Total energy
     E = sum(ev.*occ);
 
     # Helmholtz free energy
     intg = Tbeta*(fermi-ev);
-    ff = zeros(Neigs,1);
-    for i = 1 : Neigs
+    ff = zeros(H.Neigs,1);
+    for i = 1 : H.Neigs
       if( intg[i] > 30 )  # Avoid numerical problem.
         ff[i] = ev[i]-fermi;
       else
         ff[i] = -1/Tbeta * log(1+exp(intg[i]));
       end
     end
-    F = sum(ff.*occ) + fermi * nocc * nspin;
+    F = sum(ff.*occ) + fermi * nocc * H.nspin;
 
-    return (F, E, rho, ev, psi, occ, fermi)
-
+    H.occ = occ;
+    H.fermi = fermi;
+    H.Eband = E;
+    H.Fband = F;
+    H.rho = rho;
 end
 
-
-function update_rho!(H::Ham)
-# TODO to be updated later
-end
-
-function inv_lap(H::Ham,x::Array{Float64,2})
+function inv_lap(H::Ham,x::Array{Float64,1})
     # we ask for a 2 vector, given that we will consider the vector to be
     # a nx1 matrix
+    # TODO: this can be optimized using
     ytemp = H.kmul.*fft(x);
     return real(ifft(ytemp))
 end
 
-function Vtot(H::Ham,x::Array{Float64,2})
+function Vtot(H::Ham,x::Array{Float64,1})
     # application of the potential part of the Hamiltonian
     return (H.Vtot).*x
 end
@@ -188,21 +212,35 @@ end
 
 
 
-function update_vtot!(H::Ham,Vtotnew, scfOpts::scfOptions)
+function update_vtot!(H::Ham, mixOpts)
     # TODO here we need to implement the andersson mix
     # I added the signature
 
-      (Vtotmix,ymat,smat) = andersonmix(H.Vtot,Vtotnew,
-        betamix(1),ymat,smat, iter, mixdim);
+    (Vtotnew,Verr) = update_pot!(H)
+    betamix = mixOpts.betamix;
+    mixdim = mixOpts.mixdim;
+    ymat = mixOpts.ymat;
+    smat = mixOpts.smat;
+    iter = mixOpts.iter;
 
-        return (Vtotmix,ymat,smat)
+     (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
+        betamix, ymat, smat, iter, mixdim);
+
+    mixOpts.ymat = ymat;
+    mixOpts.smat = smat;
+    mixOpts.iter += 1;
+
+    # updating total potential
+    H.Vtot = Vtotmix;
+    return Verr
 end
 
-function init_pot!(H::Ham)
+function init_pot!(H::Ham, nocc::Int64)
+    # nocc number of occupied states
     #function to initialize the potential in the Hamiltonian class
 
     rho  = -H.rhoa;
-    rho  = rho / (sum(rho)*H.dx) * (H.nocc*H.nspin);
+    rho  = rho / ( sum(rho)*H.dx) * (nocc*H.nspin);
     H.rho = rho;
     H.Vhar = hartree_pot_bc(H.rho+H.rhoa, H);
     H.Vtot = H.Vhar;   # No exchange-correlation

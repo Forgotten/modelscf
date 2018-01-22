@@ -1,4 +1,4 @@
-function hartree_pot_bc(rho::Array{Float64,1}, Ls::Float64, YukawaK::Float64, epsil0::Float64)
+function hartree_pot_bc(rho::Array{Float64,2}, Ls::Float64, YukawaK::Float64, epsil0::Float64)
 # Calculate the Hartree potential and the energy in periodic boundary potential
 # this function is called from the one in the Ham. This is anotated to give the jit
 # compiler more information
@@ -6,7 +6,7 @@ function hartree_pot_bc(rho::Array{Float64,1}, Ls::Float64, YukawaK::Float64, ep
 # Lin Lin
 # Date of revision: 10/13/2011
 
-    Ns_glb = numel(rho);
+    Ns_glb = length(rho);
     kx = 2*pi* vcat(collect(0:Ns_glb/2),
                     collect(-Ns_glb/2+1:-1))./Ls ;
     # Use Yukawa rather than the bare Coulomb potential.  The method does
