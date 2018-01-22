@@ -4,7 +4,7 @@ function get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64)
     #
     # Obtained from KSSOLV
     #
-    # ZX: Transferred to julia language. 
+    # ZX: Transferred to julia language.
     nev = length(ev)
     tol = 1e-15
     maxiter = 100
@@ -53,7 +53,7 @@ function get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64)
        occ = fermidirac(ev,efermi,Tbeta)
        occsum = sum(occ)
        iter = 1
-       while ( abs(occsum-nocc) > tol & iter < maxiter )
+       while ( abs(occsum-nocc) > tol ) && ( iter < maxiter )
           # fprintf('iter = #d, efermi = #11.3e, sum = #11.3e\n', ...
                    # iter, efermi, occsum);
           # fprintf('lb = #11.3e, ub = #11.3e\n', lb, ub);
@@ -77,11 +77,12 @@ function get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64)
     end
     return (occ, efermi)
 end
-function fermidirac(ev,efermi,Tbeta)
+
+function fermidirac(ev,efermi,Tbeta::Float64)
 #
 # usage: [f,g] = fermidirac(ev, efermi, Tbeta);
 
-f = 1./(1+exp(Tbeta*(ev-efermi)))
+f = 1./(1+exp.(Tbeta*(ev-efermi)))
 
 return f
     # if( nargout > 1 )
