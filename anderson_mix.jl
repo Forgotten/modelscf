@@ -1,14 +1,17 @@
-function anderson_mix(vin, vout, beta, ymat, smat, iter, mixdim)
-    # function that computes the new potential usign the anerson mix
+function anderson_mix(vin, vout, beta, ymat, smat, iter::Int64, mixdim)
+    # function that computes the new potential usign the anderson mix
+    # TODO: I think that the mixing can be efficiently be explained by a small
+    # jupyter notebook
 
-    n=length(vin);
+    n = length(vin);
     #
     # function evaluation overwrites vout
     #
+    # residue
     res = vin - vout;
     #
     iterused = min(iter-1,mixdim);
-    ipos = iter - 1 - floor((iter-2)/mixdim)*mixdim;
+    ipos = iter - 1 - round(Integer, floor((iter-2)/mixdim))*mixdim;
     #
     if (iter > 1)
        # compute the changes in function evaluations and the step (changes
@@ -27,7 +30,7 @@ function anderson_mix(vin, vout, beta, ymat, smat, iter, mixdim)
        ropt   = res - ymat[:,1:iterused] * gammas;
     end
 
-    inext = iter - floor((iter - 1) / mixdim) * mixdim;
+    inext = iter - round(Integer, floor((iter - 1) / mixdim)) * mixdim;
     ymat[:,inext] = res;
     smat[:,inext] = vin;
 

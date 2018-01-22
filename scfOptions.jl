@@ -4,6 +4,7 @@ struct scfOptions
     # the Hamiltoinian shouldn't have the scf options embeded
     mixtime::String
     betamix::Float64
+    mixdim::Int64
     SCFtol::Float64
     scfiter::Int64
     eigstol::Float64
@@ -11,7 +12,7 @@ struct scfOptions
     eigmethod::AbstractString
 
     function scfOptions()
-        new scfOptions('anderson',0.5,1e-7,100,1e-9, 50, "eigs")
+        new("anderson",0.5, 10, 1e-7,100,1e-9, 50, "eigs")
     end
 end
 
@@ -24,10 +25,29 @@ struct eigOptions
     eigmethod::AbstractString
 
     function eigOptions()
-        new scfOptions(1e-9, 50, "eigs")
+        new(1e-9, 50, "eigs")
     end
 
     function eigOptions(opts::scfOptions)
-        new scfOptions(opts.eigstol, opts.eigsiter, opt.eigmethod)
+        new(opts.eigstol, opts.eigsiter, opts.eigmethod)
     end
+end
+
+#abstract struct mixingOptions end
+
+mutable struct andersonMixOptions # <: mixingOptions
+    ymat
+    smat
+    betamix
+    mixdim
+    iter::Int64
+    function andersonMixOptions(Ns, scfOpts::scfOptions)
+        ymat = zeros(Ns, scfOpts.mixdim);
+        smat = zeros(Ns, scfOpts.mixdim);
+        new(ymat,smat,scfOpts.betamix[1],scfOpts.mixdim,1)
+    end
+end
+
+function updateMix!( mixOpts::andersonMixOptions, ii )
+    mixOpts.iter = ii;
 end
