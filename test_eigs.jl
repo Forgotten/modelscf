@@ -46,9 +46,10 @@ function *(H::test, x::Array{Float64,2})
     return H.M*x
 end
 
-
+# Update the test case on symmetric matrix, test on the eigs function
 n = 10;
 M = rand(n,n)+ eye(n);
+M = (M + M') / 2
 T = test(M);
 r = rand(n,1)
 assert(norm(M*r - T*r) < 1e-12)
@@ -60,4 +61,4 @@ At_mul_B!(Y,T,B)
 assert(norm(Y - M'*B) < 1e-12)
 
 
-eigs(T)
+(d,v,nconv,niter,nmult,resid) = eigs(T, nev=n-1, which=:SR)
