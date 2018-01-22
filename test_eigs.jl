@@ -14,19 +14,9 @@ import Base.eltype
 import Base.size
 import Base.issymmetric
 
-
+#
 function At_mul_B(T::test, v)
     return T.M'*v
-end
-
-
-# We need be carefull when modifying input variables
-function At_mul_B!(y, T::test, v)
-    y[:,:]= T.M'*v
-end
-#
-function A_mul_B!(Y, T::test, V)
-    Y[:,:] = T.M*V;
 end
 
 function size(T::test)
@@ -39,6 +29,16 @@ end
 
 function issymmetric(T::test)
     return issymmetric(T.M)
+end
+
+
+# We need be carefull when modifying input variables
+function At_mul_B!(y, T::test, v)
+    y[:,:]= T.M'*v
+end
+#
+function A_mul_B!(Y, T::test, V)
+    Y[:,:] = T.M*V;
 end
 
 function *(H::test, x::Array{Float64,2})

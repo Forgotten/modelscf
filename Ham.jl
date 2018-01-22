@@ -26,7 +26,7 @@ struct Ham
     function Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0)
         # QUESTION: what is n_extra?
         Ls = Nunit * Lat;
-        Ns = round(Int, Ls / dx);
+        Ns = round(Integer, Ls / dx);
 
         #
         dx = Ls / Ns;
@@ -70,29 +70,65 @@ struct Ham
     end
 end
 
+# importing the necessary functions to comply with Julia duck typing
 import Base.*
+import Base.A_mul_B!
+import Base.At_mul_B
+import Base.At_mul_B!
+import Base.eltype
+import Base.size
+import Base.issymmetric
 
-function *(H::Ham, x::Array{Float64,2})
+function *(H::Ham, x::Array{Number,2})
     # Function  to  overload the application of the Hamiltonian times avector
-    y_lap = inv_lap(H,x);
-    y_lap = Vtot(H,x);
+    y_lap  = inv_lap(H,x);
+    y_vtot = Vtot(H,x);
 
-    return y_lap + y_lap;
+    return y_lap + y_vtot;
 end
 
-function updateX(H::Ham)
+function At_mul_B(H::Ham, v)
+    return H*v
+end
 
-    ## we really need to take a look at the dependencies in here
-    opts.issym  = 1;
-    opts.isreal = 1;
-    opts.tol    = 1e-8;
-    opts.maxit  = 1000;
+function At_mul_B!(y, H::Ham, v)
+    # in place mat vec
+    y[:] = H*v
+end
 
-    # TODO: make sure that eigs works with overloaded operators
-    # TODO: take a look a the interface of eigs in Julia
-    results = eigs(H, H.Ns, H.Neigs, opts);
-    assert(flag == 0);
+function size(H::Ham)
+    return H.Ns
+end
 
+function eltype(H::Ham)
+    # we work always in real space, the Fourier operations are on ly meant as
+    # a pseudo spectral discretization
+    return typeof(1.0)
+end
+
+function issymmetric(H::test)
+    return true
+end
+
+
+function update_psi!(H::Ham, opts::eigOptions)
+    # we need to add some options to the update
+    # functio to solve the eigenvalue problem for a given rho and Vtot
+
+    if opts.eigmethod == "eigs"
+        # if eigenvalue method is eigs then use this
+        ## we really need to take a look at the dependencies in here
+        opts.issym  = 1;
+        opts.isreal = 1;
+        opts.tol    = 1e-8;
+        opts.maxit  = 1000;
+
+        # TODO: make sure that eigs works with overloaded operators
+        # TODO: take a look a the interface of eigs in Julia
+        results = eigs(H, H.Ns, H.Neigs, opts);
+        assert(flag == 0);
+
+    end
     ev = diag(ev);
 
     #sorting the eigenvalues
@@ -111,10 +147,10 @@ function updateX(H::Ham)
     intg = Tbeta*(fermi-ev);
     ff = zeros(Neigs,1);
     for i = 1 : Neigs
-      if( intg(i) > 30 )  # Avoid numerical problem.
-        ff(i) = ev(i)-fermi;
+      if( intg[i] > 30 )  # Avoid numerical problem.
+        ff[i] = ev[i]-fermi;
       else
-        ff(i) = -1/Tbeta * log(1+exp(intg(i)));
+        ff[i] = -1/Tbeta * log(1+exp(intg[i]));
       end
     end
     F = sum(ff.*occ) + fermi * nocc * nspin;
@@ -124,8 +160,8 @@ function updateX(H::Ham)
 end
 
 
-function update_rho(H::Ham)
-
+function update_rho!(H::Ham)
+# TODO to be updated later
 end
 
 function inv_lap(H::Ham,x::Array{Float64,2})
@@ -149,14 +185,20 @@ function hartree_pot_bc(rho, H::Ham)
     return hartree_pot_bc(rho, H.Ls, H.YukawaK, H.epsil0)
 end
 
-function mixing()
-    # TODO here
-    # here we need to implement the andersson mix
-      (Vtotmix,ymat,smat) = andersonmix(glb.Vtot,Vtotnew,
+
+
+
+function update_vtot!(H::Ham,Vtotnew, scfOpts::scfOptions)
+    # TODO here we need to implement the andersson mix
+    # I added the signature
+
+      (Vtotmix,ymat,smat) = andersonmix(H.Vtot,Vtotnew,
         betamix(1),ymat,smat, iter, mixdim);
+
+        return (Vtotmix,ymat,smat)
 end
 
-function init_pot(H::Ham)
+function init_pot!(H::Ham)
     #function to initialize the potential in the Hamiltonian class
 
     rho  = -H.rhoa;
@@ -179,5 +221,30 @@ function update_pot!(H::Ham)
     # NOTE: H.Fband is only the band energy here.  The real total energy
     # is calculated using the formula below:
     H.Ftot = H.Fband + 1/2 * sum((H.rhoa-H.rho).*H.Vhar)*dx;
-    return Verr # returns the differnece betwen two consecutive iterations
+    return (Vtotnew,Verr) # returns the differnece betwen two consecutive iterations
+end
+
+
+# TODO: add a default setting for the scfOpts
+function scf!(H::Ham, scfOpts::scfOptions)
+
+    eigsOpts = eigOptions(scfOpts)
+    # we need to suppose that everything is already organized
+    for ii = 1:opts.scfiter
+
+        # what about the Energy in this case?
+
+        # update Psi
+        update_psi!(H,eigsOpts)
+
+        update_rho!(H)
+
+        # need to think of how properly set this up
+        (Vtotnew,Verr) = update_pot!(H)
+        VtoterrHist[ii] = Verr;
+
+        update_vtot!(H,Vtotnew,scfOpts)
+    end
+
+    return VtoterrHist
 end

@@ -77,8 +77,6 @@ function get_occ(ev::Vector{Float64}, nocc::Int64, Tbeta::Float64)
     end
     return (occ, efermi)
 end
-
-
 function fermidirac(ev,efermi,Tbeta)
 #
 # usage: [f,g] = fermidirac(ev, efermi, Tbeta);
