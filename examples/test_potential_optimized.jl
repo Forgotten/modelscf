@@ -1,12 +1,12 @@
 #test construction of the Hamiltonian
 # adding alll the necessary files
-include("Atoms.jl")
-include("scfOptions.jl")
-include("Ham.jl")
-include("hartree_pot_bc.jl")
-include("pseudocharge.jl")
-include("getocc.jl")
-include("anderson_mix.jl")
+include("../src/Atoms.jl")
+include("../src/scfOptions.jl")
+include("../src/Ham.jl")
+include("../src/hartree_pot_bc.jl")
+include("../src/pseudocharge.jl")
+include("../src/getocc.jl")
+include("../src/anderson_mix.jl")
 
 dx = 1.0;
 Nunit = 128;
@@ -69,7 +69,7 @@ pot1 =  hartree_pot_bc(rho, Ls, YukawaK, epsil0);
 pot2 = hartree_pot_bc_opt(rho, Ls, YukawaK, epsil0);
 pot3 = hartree_pot_bc_opt_vec(rhovec, Ls, YukawaK, epsil0);
 
-# testing the time and the number of allocations 
+# testing the time and the number of allocations
 @time pot1 =  hartree_pot_bc(rho, Ls, YukawaK, epsil0);
 @time pot2 = hartree_pot_bc_opt(rho, Ls, YukawaK, epsil0);
 @time pot3 = hartree_pot_bc_opt_vec(rhovec, Ls, YukawaK, epsil0);

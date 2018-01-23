@@ -2,9 +2,6 @@ function hartree_pot_bc(rho::Array{Float64,2}, Ls::Float64, YukawaK::Float64, ep
 # Calculate the Hartree potential and the energy in periodic boundary potential
 # this function is called from the one in the Ham. This is anotated to give the jit
 # compiler more information
-#
-# Lin Lin
-# Date of revision: 10/13/2011
 
     Ns_glb = length(rho);
     kx = 2*pi* vcat(collect(0:Ns_glb/2),
@@ -24,7 +21,8 @@ end
 ############################################################################
 ##  Trying different optimizations
 
-function hartree_pot_bc_opt(rho::Array{Float64,2}, Ls::Float64, YukawaK::Float64, epsil0::Float64)
+function hartree_pot_bc_opt(rho::Array{Float64,2}, Ls::Float64,
+                            YukawaK::Float64, epsil0::Float64)
 # Calculate the Hartree potential and the energy in periodic boundary potential
 # this function is called from the one in the Ham. This is anotated to give the jit
 # compiler more information
@@ -48,7 +46,8 @@ end
 
 # using 1D vector in general should produce faster resutls
 
-function hartree_pot_bc_opt_vec(rho::Vector{Float64}, Ls::Float64, YukawaK::Float64, epsil0::Float64)
+function hartree_pot_bc_opt_vec(rho::Vector{Float64}, Ls::Float64,
+                                YukawaK::Float64, epsil0::Float64)
 # Calculate the Hartree potential and the energy in periodic boundary potential
 # this function is called from the one in the Ham. This is anotated to give the jit
 # compiler more information
@@ -60,7 +59,7 @@ end
 
 
 @inline function inv_yukawa_fourier_mult_vec!(R::Vector{Complex128}, Ls::Float64,
-                                          YukawaK::Float64 )
+                                              YukawaK::Float64 )
     c = (2 * pi / Ls)^2
     c1 = 4*pi
     R[1] = 0

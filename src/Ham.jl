@@ -87,7 +87,7 @@ import Base.issymmetric
 function *(H::Ham, x::Array{Float64,1})
     # matvec overloading
     # Function  to  overload the application of the Hamiltonian times avector
-    y_lap  = inv_lap(H,x);
+    y_lap  = lap(H,x);
     y_vtot = Vtot(H,x);
 
     return y_lap + y_vtot;
@@ -131,8 +131,6 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
     if eigOpts.eigmethod == "eigs"
-        # if eigenvalue method is eigs then use this
-        ## we really need to take a look at the dependencies in here
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
         (ev,psi,nconv,niter,nmult,resid) = eigs(H,   # Hamiltonian
@@ -141,21 +139,15 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
                                                 ritzvec=true, # provide Ritz v
                                                 tol=eigOpts.eigstol, # tolerance
                                                 maxiter=eigOpts.eigsiter) #maxiter
-
         #assert(flag == 0);
-
     end
-
 
     # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev);
-
     # updating the eigenvalues
     H.ev = ev[ind]
     # updating the eigenvectors
     H.psi = psi[:, ind];
-
-
 end
 
 
@@ -188,7 +180,7 @@ function update_rho!(H::Ham, nocc::Int64)
     H.rho = rho;
 end
 
-function inv_lap(H::Ham,x::Array{Float64,1})
+function lap(H::Ham,x::Array{Float64,1})
     # we ask for a 2 vector, given that we will consider the vector to be
     # a nx1 matrix
     # TODO: this can be optimized using rfft
@@ -241,7 +233,6 @@ end
 function init_pot!(H::Ham, nocc::Int64)
     # nocc number of occupied states
     #function to initialize the potential in the Hamiltonian class
-
     rho  = -H.rhoa;
     rho  = rho / ( sum(rho)*H.dx) * (nocc*H.nspin);
     H.rho = rho;
@@ -265,7 +256,6 @@ function update_pot!(H::Ham)
     return (Vtotnew,Verr) # returns the differnece betwen two consecutive iterations
 end
 
-
 # TODO: add a default setting for the scfOpts
 function scf!(H::Ham, scfOpts::scfOptions)
 
@@ -280,16 +270,37 @@ function scf!(H::Ham, scfOpts::scfOptions)
     # we test first updating the psi
 
     for ii = 1:scfOpts.scfiter
+        # solving the linear eigenvalues problem
         update_psi!(H, eigOpts);
 
+        # update the electron density
         update_rho!(H,Nocc);
 
+        # update the total potential, and compute the
+        # differnce between the potentials
         Verr = update_vtot!(H, mixOpts);
+
+        # save the error
         VtoterrHist[ii] = Verr ;
+        # test if the problem had already satiesfied the tolerance
         if scfOpts.SCFtol > Verr
             break
         end
     end
 
     return VtoterrHist[VtoterrHist.>0]
+end
+
+function lap_opt(H::Ham,x::Array{Float64,1})
+    # we ask for a 2 vector, given that we will consider the vector to be
+    xFourier = rfft(x)
+    laplacian_fourier_mult!(xFourier, Ls)
+    return irfft(xFourier, H.Ns )
+end
+
+@inline function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )
+    c = (2 * pi / Ls)^2
+    @inbounds @simd for ii = 1:length(R)
+        R[ii] = (ii-1)^2*c*R[ii]
+    end
 end
