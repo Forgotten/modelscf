@@ -52,7 +52,7 @@ gridpos = zeros(Ns,1)
 gridpos[:,1] = collect(0:Ns-1).'.*dx; #'
 
 
-ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0)
+ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0, Tbeta)
 
 # total number of occupied orbitals
 Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
@@ -60,20 +60,25 @@ Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
 # initialize the potentials within the Hemiltonian
 # setting H[\rho_0]
 init_pot!(ham, Nocc)
-
-#We define the scfOptions
 scfOpts = scfOptions();
-eigOpts = eigOptions(scfOpts);
-mixOpts = andersonMixOptions(Ns, scfOpts);
-# we test first updating the psi
 
-for ii = 1:scfOpts.scfiter
-update_psi!(ham, eigOpts)
+VtoterrHist = scf!(ham, scfOpts)
 
-update_rho!(ham,Nocc,Tbeta )
 
-Verr = update_vtot!(ham, mixOpts)
-    if scfOpts.SCFtol > Verr
-        break
-    end
-end
+# # We define the scfOptions
+# scfOpts = scfOptions();
+# eigOpts = eigOptions(scfOpts);
+# mixOpts = andersonMixOptions(Ns, scfOpts);
+# # we test first updating the psi
+# tic();
+# for ii = 1:scfOpts.scfiter
+# update_psi!(ham, eigOpts)
+#
+# update_rho!(ham,Nocc,Tbeta)
+#
+# Verr = update_vtot!(ham, mixOpts)
+#     if scfOpts.SCFtol > Verr
+#         break
+#     end
+# end
+# toc()

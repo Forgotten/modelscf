@@ -24,8 +24,9 @@ mutable struct Ham
     Ftot               # Total Helmholtz energy
     YukawaK            # shift for the potential
     epsil0
+    Tbeta              # temperature 1beta = 1/T
 
-    function Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0)
+    function Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0,Tbeta)
         # QUESTION: what is n_extra?
         Ls = Nunit * Lat;
         Ns = round(Integer, Ls / dx);
@@ -70,7 +71,7 @@ mutable struct Ham
 
         new(Ns, Ls, kmul, dx, gridpos, posstart, posidx, H, rhoa,
             rho, Vhar, Vtot, drhoa, ev, psi, fermi, occ,nspin, Neigs, atoms,
-            Eband, Fband, Ftot, YukawaK, epsil0)
+            Eband, Fband, Ftot, YukawaK, epsil0, Tbeta)
     end
 end
 
@@ -158,10 +159,10 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
 end
 
 
-function update_rho!(H::Ham, nocc::Int64, Tbeta::Float64)
+function update_rho!(H::Ham, nocc::Int64)
 
     ev = H.ev;
-    (occ, fermi) = get_occ(ev, nocc, Tbeta);
+    (occ, fermi) = get_occ(ev, nocc, H.Tbeta);
     occ = occ * H.nspin;
     rho = sum(H.psi.^2*diagm(occ),2)/H.dx;
 
@@ -169,13 +170,13 @@ function update_rho!(H::Ham, nocc::Int64, Tbeta::Float64)
     E = sum(ev.*occ);
 
     # Helmholtz free energy
-    intg = Tbeta*(fermi-ev);
+    intg = H.Tbeta*(fermi-ev);
     ff = zeros(H.Neigs,1);
     for i = 1 : H.Neigs
       if( intg[i] > 30 )  # Avoid numerical problem.
         ff[i] = ev[i]-fermi;
       else
-        ff[i] = -1/Tbeta * log(1+exp(intg[i]));
+        ff[i] = -1/H.Tbeta * log(1+exp(intg[i]));
       end
     end
     F = sum(ff.*occ) + fermi * nocc * H.nspin;
@@ -190,7 +191,9 @@ end
 function inv_lap(H::Ham,x::Array{Float64,1})
     # we ask for a 2 vector, given that we will consider the vector to be
     # a nx1 matrix
-    # TODO: this can be optimized using
+    # TODO: this can be optimized using rfft
+    # TODO: we can surther accelerate this using a in-place multiplication
+
     ytemp = H.kmul.*fft(x);
     return real(ifft(ytemp))
 end
@@ -223,7 +226,7 @@ function update_vtot!(H::Ham, mixOpts)
     smat = mixOpts.smat;
     iter = mixOpts.iter;
 
-     (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
+    (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
         betamix, ymat, smat, iter, mixdim);
 
     mixOpts.ymat = ymat;
@@ -253,7 +256,7 @@ function update_pot!(H::Ham)
     H.Vhar = hartree_pot_bc(H.rho+H.rhoa,H);
     # here Vtotnew only considers the
     Vtotnew  = H.Vhar;  # no exchange-correlation so far
-    Verr = norm(Vtotnew-H.Vtot)./norm(H.Vtot);
+    Verr = norm(Vtotnew-H.Vtot)./norm(H.Vtot); # computing the relative error
 
 
     # NOTE: H.Fband is only the band energy here.  The real total energy
@@ -266,23 +269,27 @@ end
 # TODO: add a default setting for the scfOpts
 function scf!(H::Ham, scfOpts::scfOptions)
 
-    eigsOpts = eigOptions(scfOpts)
-    # we need to suppose that everything is already organized
-    for ii = 1:opts.scfiter
+    # vector containing the hostorical of the results
+    VtoterrHist = zeros(scfOpts.scfiter)
+    eigOpts = eigOptions(scfOpts);
+    mixOpts = andersonMixOptions(H.Ns, scfOpts);
 
-        # what about the Energy in this case?
+    # number of occupied states
+    Nocc = round(Integer, sum(H.atoms.nocc) / ham.nspin);
 
-        # update Psi
-        update_psi!(H,eigsOpts)
+    # we test first updating the psi
 
-        update_rho!(H)
+    for ii = 1:scfOpts.scfiter
+        update_psi!(H, eigOpts);
 
-        # need to think of how properly set this up
-        (Vtotnew,Verr) = update_pot!(H)
-        VtoterrHist[ii] = Verr;
+        update_rho!(H,Nocc);
 
-        update_vtot!(H,Vtotnew,scfOpts)
+        Verr = update_vtot!(H, mixOpts);
+        VtoterrHist[ii] = Verr ;
+        if scfOpts.SCFtol > Verr
+            break
+        end
     end
 
-    return VtoterrHist
+    return VtoterrHist[VtoterrHist.>0]
 end
