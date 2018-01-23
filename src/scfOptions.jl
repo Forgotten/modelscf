@@ -36,10 +36,10 @@ end
 #abstract struct mixingOptions end
 
 mutable struct andersonMixOptions # <: mixingOptions
-    ymat
-    smat
-    betamix
-    mixdim
+    ymat::Array{Float64,2}
+    smat::Array{Float64,2}
+    betamix::Float64
+    mixdim::Int64
     iter::Int64
     function andersonMixOptions(Ns, scfOpts::scfOptions)
         ymat = zeros(Ns, scfOpts.mixdim);

@@ -55,7 +55,7 @@ init_pot!(ham, Nocc)
 scfOpts = scfOptions();
 
 # running the scf iteration
-VtoterrHist = scf!(ham, scfOpts)
+@time VtoterrHist = scf!(ham, scfOpts)
 
 
 # # We define the scfOptions
