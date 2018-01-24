@@ -33,3 +33,9 @@ R = sin.(Ls *2*pi*collect(0:N-1)/N)
 
 @time dRdx = ddrddx(R, N, Ls);
 @time dRdx2 = ddrddx2(R, N, Ls);
+
+
+# Profile.clear()
+# @profile dRdx2 = ddrddx2(R, N, Ls);
+# Juno.profiletree()
+# Juno.profiler()
