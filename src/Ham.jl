@@ -275,7 +275,7 @@ function scf!(H::Ham, scfOpts::scfOptions)
     mixOpts = andersonMixOptions(H.Ns, scfOpts);
 
     # number of occupied states
-    Nocc = round(Integer, sum(H.atoms.nocc) / ham.nspin);
+    Nocc = round(Integer, sum(H.atoms.nocc) / H.nspin);
 
     # we test first updating the psi
 
