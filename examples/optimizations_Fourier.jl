@@ -11,10 +11,10 @@ return ddrdxx
 end
 
 
-@inline function laplacian_fourier_mult!(R::Array{Complex128,1}, Ls::Float64 )
+function laplacian_fourier_mult!(R::Array{Complex128,1}, Ls::Float64 )
     c = (2 * pi / Ls)^2
-    @inbounds @simd for ii = 1:length(R)
-        R[ii] = (ii-1)^2*c*R[ii]
+    @simd for ii = 1:length(R)
+        @inbounds R[ii] = (ii-1)^2*c*R[ii]
     end
 end
 

@@ -4,27 +4,27 @@ mutable struct Ham
     kmul::Array{Float64,2} # wait until everything is clearer
     dx::Float64
     gridpos::Array{Float64,2}
-    posstart
-    posidx
+    posstart::Int64
+    posidx::Int64
     H                  # no idea what is this
     rhoa::Array{Float64,2}               # pseudo-charge for atoms (negative)
-    rho                # electron density
-    Vhar               # Hartree potential for both electron and nuclei
-    Vtot               # total energy
+    rho::Array{Float64,2}                # electron density
+    Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
+    Vtot::Array{Float64,2}               # total energy
     drhoa  # derivative of the pseudo-charge
-    ev
-    psi
-    fermi
+    ev::Array{Float64,1} 
+    psi::Array{Float64,2}
+    fermi::Float64
     occ
     nspin
     Neigs::Int64    # QUESTION: Number of eigenvalues?
-    atoms
-    Eband              # Total band energy
-    Fband              # Helmholtz band energy
-    Ftot               # Total Helmholtz energy
-    YukawaK            # shift for the potential
-    epsil0
-    Tbeta              # temperature 1beta = 1/T
+    atoms::Atoms
+    Eband::Float64              # Total band energy
+    Fband::Float64               # Helmholtz band energy
+    Ftot::Float64                # Total Helmholtz energy
+    YukawaK::Float64             # shift for the potential
+    epsil0::Float64
+    Tbeta::Float64               # temperature 1beta = 1/T
 
     function Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0,Tbeta)
         # QUESTION: what is n_extra?
@@ -56,17 +56,17 @@ mutable struct Ham
         # TODO: we need to figure out the type of each of the fields to properlu
         # initialize them
         H  = []
-        rho = []
-        Vhar = []
-        Vtot = []
+        rho = zeros(1,1);
+        Vhar = zeros(1,1);
+        Vtot = zeros(1,1);
         drhoa = []
         ev = []
-        psi = []
-        fermi = []
+        psi = zeros(1,1);
+        fermi = 0.0;
         occ = []
-        Eband = []
-        Fband = []
-        Ftot = []
+        Eband = 0.0
+        Fband = 0.0
+        Ftot = 0.0
         nspin = 1;
 
         new(Ns, Ls, kmul, dx, gridpos, posstart, posidx, H, rhoa,
@@ -102,7 +102,17 @@ function *(H::Ham, X::Array{Float64,2})
 end
 
 
-function A_mul_B!(Y, H::Ham, V)
+function A_mul_B!(Y::Array{Float64,2}, H::Ham, V::Array{Float64,2})
+    # in place matrix matrix multiplication
+    assert(size(Y) == size(V))
+    for ii = 1:size(V,2)
+        Y[:,ii] = H*V[:,ii]
+    end
+end
+
+# optimized version for eigs
+function A_mul_B!(Y::SubArray{Float64,1,Array{Float64,1}},
+                  H::Ham, V::SubArray{Float64,1,Array{Float64,1}})
     # in place matrix matrix multiplication
     assert(size(Y) == size(V))
     for ii = 1:size(V,2)
@@ -294,13 +304,13 @@ end
 function lap_opt(H::Ham,x::Array{Float64,1})
     # we ask for a 2 vector, given that we will consider the vector to be
     xFourier = rfft(x)
-    laplacian_fourier_mult!(xFourier, Ls)
+    laplacian_fourier_mult!(xFourier, H.Ls)
     return irfft(xFourier, H.Ns )
 end
 
-@inline function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )
-    c = (2 * pi / Ls)^2
-    @inbounds @simd for ii = 1:length(R)
-        R[ii] = (ii-1)^2*c*R[ii]
+function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )
+    c = (2 * pi / Ls)^2/2
+    @simd for ii = 1:length(R)
+        @inbounds R[ii] = (ii-1)^2*c*R[ii]
     end
 end
