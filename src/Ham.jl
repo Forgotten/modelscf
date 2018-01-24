@@ -12,11 +12,11 @@ mutable struct Ham
     Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
     Vtot::Array{Float64,2}               # total energy
     drhoa  # derivative of the pseudo-charge
-    ev::Array{Float64,1} 
+    ev::Array{Float64,1}
     psi::Array{Float64,2}
     fermi::Float64
     occ
-    nspin
+    nspin::Int64
     Neigs::Int64    # QUESTION: Number of eigenvalues?
     atoms::Atoms
     Eband::Float64              # Total band energy
