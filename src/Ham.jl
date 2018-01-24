@@ -78,8 +78,6 @@ end
 # importing the necessary functions to comply with Julia duck typing
 import Base.*
 import Base.A_mul_B!
-import Base.At_mul_B
-import Base.At_mul_B!
 import Base.eltype
 import Base.size
 import Base.issymmetric
@@ -110,7 +108,7 @@ function A_mul_B!(Y::Array{Float64,2}, H::Ham, V::Array{Float64,2})
     end
 end
 
-# optimized version for eigs
+# optimized version for eigs (it uses sub arrays to bypass the inference step)
 function A_mul_B!(Y::SubArray{Float64,1,Array{Float64,1}},
                   H::Ham, V::SubArray{Float64,1,Array{Float64,1}})
     # in place matrix matrix multiplication
@@ -150,6 +148,14 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
                                                 tol=eigOpts.eigstol, # tolerance
                                                 maxiter=eigOpts.eigsiter) #maxiter
         #assert(flag == 0);
+    elseif  eigOpts.eigmethod == "lobpcg_sep"
+        # not working... to be fixed
+        X0 = qr(rand(H.Ns, H.Neigs), thin = true)[1]
+        prec(x) = inv_lap(H,x)
+
+        (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
+                            tol= eigOpts.eigstol,
+                            maxiter=eigOpts.eigsiter)
     end
 
     # sorting the eigenvalues, eigs already providesd them within a vector
@@ -159,6 +165,7 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
     # updating the eigenvectors
     H.psi = psi[:, ind];
 end
+
 
 
 function update_rho!(H::Ham, nocc::Int64)
@@ -191,12 +198,24 @@ function update_rho!(H::Ham, nocc::Int64)
 end
 
 function lap(H::Ham,x::Array{Float64,1})
-    # we ask for a 2 vector, given that we will consider the vector to be
+    # we ask for a vector, given that we will consider the vector to be
     # a nx1 matrix
     # TODO: this can be optimized using rfft
     # TODO: we can surther accelerate this using a in-place multiplication
 
     ytemp = H.kmul.*fft(x);
+    return real(ifft(ytemp))
+end
+
+function inv_lap(H::Ham,x::Array{Float64,1})
+    # inverse laplacian, to be used as a preconditioner for the
+    # lobpcg algorithm
+
+    inv_kmul = zeros(size(H.kmul))
+    inv_kmul[1] = 0;
+    inv_kmul[2:end] = 1./H.kmul[2:end];
+
+    ytemp = inv_kmul.*fft(x);
     return real(ifft(ytemp))
 end
 

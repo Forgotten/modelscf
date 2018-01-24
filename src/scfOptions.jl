@@ -14,6 +14,10 @@ struct scfOptions
     function scfOptions()
         new("anderson",0.5, 10, 1e-7,100,1e-8, 100, "eigs")
     end
+    function scfOptions(mixtime, betamix, mixdim, SCFtol,
+                        scfiter, eigstol, eigsiter, eigmethod)
+        new(mixtime, betamix, mixdim, SCFtol, scfiter, eigstol, eigsiter, eigmethod)
+    end
 end
 
 struct eigOptions
@@ -33,7 +37,7 @@ struct eigOptions
     end
 end
 
-# defining abstract type for all the different mixin options 
+# defining abstract type for all the different mixin options
 abstract type mixingOptions end
 
 mutable struct andersonMixOptions <: mixingOptions
