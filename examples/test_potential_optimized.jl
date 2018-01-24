@@ -1,16 +1,16 @@
 #test construction of the Hamiltonian
-
-include("Atoms.jl")
-include("scfOptions.jl")
-include("Ham.jl")
-include("hartree_pot_bc.jl")
-include("pseudocharge.jl")
-include("getocc.jl")
-include("anderson_mix.jl")
+# adding alll the necessary files
+include("../src/Atoms.jl")
+include("../src/scfOptions.jl")
+include("../src/Ham.jl")
+include("../src/hartree_pot_bc.jl")
+include("../src/pseudocharge.jl")
+include("../src/getocc.jl")
+include("../src/anderson_mix.jl")
 
 dx = 1.0;
-Nunit = 32;
-Lat = 10;
+Nunit = 128;
+Lat = 10.0;
 
 Ndist  = 1;   # Temporary variable
 Natoms = round(Integer, Nunit / Ndist);
@@ -52,28 +52,26 @@ gridpos = zeros(Ns,1)
 gridpos[:,1] = collect(0:Ns-1).'.*dx; #'
 
 
-ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0)
+ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0, Tbeta)
 
 # total number of occupied orbitals
 Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
 
 # initialize the potentials within the Hemiltonian
 # setting H[\rho_0]
-init_pot!(ham, Nocc)
+init_pot!(ham, Nocc);
 
-#We define the scfOptions
-scfOpts = scfOptions();
-eigOpts = eigOptions(scfOpts);
-mixOpts = andersonMixOptions(Ns, scfOpts);
-# we test first updating the psi
+rho = ham.rho;
+rhovec = rho[:];
 
-for ii = 1:scfOpts.scfiter
-update_psi!(ham, eigOpts)
+# trigger compilation
+pot1 =  hartree_pot_bc(rho, Ls, YukawaK, epsil0);
+pot2 = hartree_pot_bc_opt(rho, Ls, YukawaK, epsil0);
+pot3 = hartree_pot_bc_opt_vec(rhovec, Ls, YukawaK, epsil0);
 
-update_rho!(ham,Nocc,Tbeta )
+# testing the time and the number of allocations
+@time pot1 =  hartree_pot_bc(rho, Ls, YukawaK, epsil0);
+@time pot2 = hartree_pot_bc_opt(rho, Ls, YukawaK, epsil0);
+@time pot3 = hartree_pot_bc_opt_vec(rhovec, Ls, YukawaK, epsil0);
 
-Verr = update_vtot!(ham, mixOpts)
-    if scfOpts.SCFtol > Verr
-        break
-    end
-end
+norm(pot1 - pot2 )

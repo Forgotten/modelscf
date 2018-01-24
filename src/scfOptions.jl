@@ -12,7 +12,7 @@ struct scfOptions
     eigmethod::AbstractString
 
     function scfOptions()
-        new("anderson",0.5, 10, 1e-7,100,1e-9, 50, "eigs")
+        new("anderson",0.5, 10, 1e-7,100,1e-8, 100, "eigs")
     end
 end
 
@@ -25,7 +25,7 @@ struct eigOptions
     eigmethod::AbstractString
 
     function eigOptions()
-        new(1e-9, 50, "eigs")
+        new(1e-8, 100, "eigs")
     end
 
     function eigOptions(opts::scfOptions)
@@ -36,10 +36,10 @@ end
 #abstract struct mixingOptions end
 
 mutable struct andersonMixOptions # <: mixingOptions
-    ymat
-    smat
-    betamix
-    mixdim
+    ymat::Array{Float64,2}
+    smat::Array{Float64,2}
+    betamix::Float64
+    mixdim::Int64
     iter::Int64
     function andersonMixOptions(Ns, scfOpts::scfOptions)
         ymat = zeros(Ns, scfOpts.mixdim);
