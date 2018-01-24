@@ -12,11 +12,11 @@ mutable struct Ham
     Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
     Vtot::Array{Float64,2}               # total energy
     drhoa  # derivative of the pseudo-charge
-    ev::Array{Float64,1} 
+    ev::Array{Float64,1}
     psi::Array{Float64,2}
     fermi::Float64
     occ
-    nspin
+    nspin::Int64
     Neigs::Int64    # QUESTION: Number of eigenvalues?
     atoms::Atoms
     Eband::Float64              # Total band energy
@@ -275,7 +275,7 @@ function scf!(H::Ham, scfOpts::scfOptions)
     mixOpts = andersonMixOptions(H.Ns, scfOpts);
 
     # number of occupied states
-    Nocc = round(Integer, sum(H.atoms.nocc) / ham.nspin);
+    Nocc = round(Integer, sum(H.atoms.nocc) / H.nspin);
 
     # we test first updating the psi
 

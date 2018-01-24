@@ -33,9 +33,10 @@ struct eigOptions
     end
 end
 
-#abstract struct mixingOptions end
+# defining abstract type for all the different mixin options 
+abstract type mixingOptions end
 
-mutable struct andersonMixOptions # <: mixingOptions
+mutable struct andersonMixOptions <: mixingOptions
     ymat::Array{Float64,2}
     smat::Array{Float64,2}
     betamix::Float64
