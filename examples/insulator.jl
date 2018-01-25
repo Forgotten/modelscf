@@ -21,6 +21,9 @@ kb = 3.1668e-6;
 au2K = 315774.67;
 Tbeta = au2K / T_elec;
 
+betamix = 0.5;
+mixdim = 10;
+
 Ndist  = 1;   # Temporary variable
 Natoms = round(Integer, Nunit / Ndist); # number of atoms
 
@@ -48,8 +51,13 @@ Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
 # initialize the potentials within the Hemiltonian, setting H[\rho_0]
 init_pot!(ham, Nocc)
 
-# initializing the options
-scfOpts = scfOptions();
+# we use the anderson mixing of the potential
+mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
+
+# we use the default options
+eigOpts = eigOptions();
+
+scfOpts = scfOptions(eigOpts, mixOpts)
 
 # running the scf iteration
 @time VtoterrHist = scf!(ham, scfOpts)

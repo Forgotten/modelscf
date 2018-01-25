@@ -37,6 +37,8 @@ D = diagm(lambda);
 
 absr = zeros(k);
 relr = zeros(k);
+
+iter = 1;
 for iter = 1:maxiter
     # Check convergence
     R = AX - X*D;
@@ -100,11 +102,11 @@ for iter = 1:maxiter
     lambda = lambda[1:k];
     D = diagm(lambda)
 
-end
+    end
 
 X = X[:, 1:k];
 
-return (X, lambda, iter)
+return (lambda, X, iter)
 
 end
 
