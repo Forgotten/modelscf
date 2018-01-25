@@ -1,5 +1,7 @@
-function anderson_mix(vin, vout, beta, ymat, smat, iter::Int64, mixdim)
-    # function that computes the new potential usign the anderson mix
+function prec_anderson_mix(vin, vout, beta, ymat, smat, iter::Int64, mixdim, prec, precargs)
+    # function that computes the new potential usign the preconditioned anderson mix
+    # TODO: This funcion should encapulate the normal anderson mix by providing
+    #       a default preconditioner(such as the identity operator)
     # TODO: I think that the mixing can be efficiently be explained by a small
     # jupyter notebook
 
@@ -33,8 +35,9 @@ function anderson_mix(vin, vout, beta, ymat, smat, iter::Int64, mixdim)
     inext = iter - round(Integer, floor((iter - 1) / mixdim)) * mixdim;
     ymat[:,inext] = res;
     smat[:,inext] = vin;
-    
-    vnew = vopt - beta*ropt;
+
+    resprec = prec(ropt, precargs);
+    vnew = vopt - betamix*resprec;
 
     return (vnew, ymat, smat)
 end
