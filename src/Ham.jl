@@ -78,8 +78,6 @@ end
 # importing the necessary functions to comply with Julia duck typing
 import Base.*
 import Base.A_mul_B!
-import Base.At_mul_B
-import Base.At_mul_B!
 import Base.eltype
 import Base.size
 import Base.issymmetric
@@ -110,9 +108,10 @@ function A_mul_B!(Y::Array{Float64,2}, H::Ham, V::Array{Float64,2})
     end
 end
 
-# optimized version for eigs
+# optimized version for eigs (it uses sub arrays to bypass the inference step)
 function A_mul_B!(Y::SubArray{Float64,1,Array{Float64,1}},
-                  H::Ham, V::SubArray{Float64,1,Array{Float64,1}})
+                  H::Ham,
+                  V::SubArray{Float64,1,Array{Float64,1}})
     # in place matrix matrix multiplication
     assert(size(Y) == size(V))
     for ii = 1:size(V,2)
@@ -150,6 +149,15 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
                                                 tol=eigOpts.eigstol, # tolerance
                                                 maxiter=eigOpts.eigsiter) #maxiter
         #assert(flag == 0);
+        # TODO: this has a bug somewhere !!!! fix me!!!!
+    elseif  eigOpts.eigmethod == "lobpcg_sep"
+        # not working... to be fixed
+        X0 = qr(rand(H.Ns, H.Neigs), thin = true)[1]
+        prec(x) = inv_lap(H,x)
+
+        (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
+                            tol= eigOpts.eigstol,
+                            maxiter=eigOpts.eigsiter)
     end
 
     # sorting the eigenvalues, eigs already providesd them within a vector
@@ -159,6 +167,7 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
     # updating the eigenvectors
     H.psi = psi[:, ind];
 end
+
 
 
 function update_rho!(H::Ham, nocc::Int64)
@@ -191,12 +200,24 @@ function update_rho!(H::Ham, nocc::Int64)
 end
 
 function lap(H::Ham,x::Array{Float64,1})
-    # we ask for a 2 vector, given that we will consider the vector to be
+    # we ask for a vector, given that we will consider the vector to be
     # a nx1 matrix
     # TODO: this can be optimized using rfft
     # TODO: we can surther accelerate this using a in-place multiplication
 
     ytemp = H.kmul.*fft(x);
+    return real(ifft(ytemp))
+end
+
+function inv_lap(H::Ham,x::Array{Float64,1})
+    # inverse laplacian, to be used as a preconditioner for the
+    # lobpcg algorithm
+
+    inv_kmul = zeros(size(H.kmul))
+    inv_kmul[1] = 0;
+    inv_kmul[2:end] = 1./H.kmul[2:end];
+
+    ytemp = inv_kmul.*fft(x);
     return real(ifft(ytemp))
 end
 
@@ -222,6 +243,8 @@ function update_vtot!(H::Ham, mixOpts)
     # I added the signature
 
     (Vtotnew,Verr) = update_pot!(H)
+
+    # TODO: add a swtich to use different kinds of mixing here
     betamix = mixOpts.betamix;
     mixdim = mixOpts.mixdim;
     ymat = mixOpts.ymat;
@@ -231,8 +254,60 @@ function update_vtot!(H::Ham, mixOpts)
     (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
         betamix, ymat, smat, iter, mixdim);
 
-    mixOpts.ymat = ymat;
-    mixOpts.smat = smat;
+    # they are already modified inside the function
+    # mixOpts.ymat = ymat;
+    # mixOpts.smat = smat;
+    mixOpts.iter += 1;
+
+    # updating total potential
+    H.Vtot = Vtotmix;
+    return Verr
+end
+
+function update_vtot!(H::Ham, mixOpts::kerkerMixOptions)
+    # TODO here we need to implement the andersson mix
+    # I added the signature
+
+    (Vtotnew,Verr) = update_pot!(H)
+
+    # println("using kerker mixing")
+    # computign the residual
+    res     = H.Vtot - Vtotnew;
+
+    # println("appliying the preconditioner")
+    resprec = kerker_mix(res, mixOpts.KerkerB, mixOpts.kx,
+                              mixOpts.YukawaK, mixOpts.epsil0);
+
+    # println("performing the linear mixing ")
+    Vtotmix =  H.Vtot - mixOpts.betamix * resprec;
+
+    # updating total potential
+    # println("saving the total potentail ")
+    H.Vtot = Vtotmix;
+
+    # println("returning the error")
+    return Verr
+end
+
+function update_vtot!(H::Ham, mixOpts::andersonPrecMixOptions)
+    # TODO here we need to implement the andersson mix
+    # I added the signature
+
+    (Vtotnew,Verr) = update_pot!(H)
+
+
+    betamix = mixOpts.betamix;
+    mixdim = mixOpts.mixdim;
+    ymat = mixOpts.ymat;
+    smat = mixOpts.smat;
+    iter = mixOpts.iter;
+
+    (Vtotmix,ymat,smat) = prec_anderson_mix(H.Vtot,Vtotnew,
+        betamix, ymat, smat, iter, mixdim, mixOpts.prec, mixOpts.precargs)
+
+    # they are already modified inside the function
+    # mixOpts.ymat = ymat;
+    # mixOpts.smat = smat;
     mixOpts.iter += 1;
 
     # updating total potential
@@ -271,8 +346,8 @@ function scf!(H::Ham, scfOpts::scfOptions)
 
     # vector containing the hostorical of the results
     VtoterrHist = zeros(scfOpts.scfiter)
-    eigOpts = eigOptions(scfOpts);
-    mixOpts = andersonMixOptions(H.Ns, scfOpts);
+    eigOpts = scfOpts.eigOpts;
+    mixOpts = scfOpts.mixOpts;
 
     # number of occupied states
     Nocc = round(Integer, sum(H.atoms.nocc) / H.nspin);
@@ -301,11 +376,19 @@ function scf!(H::Ham, scfOpts::scfOptions)
     return VtoterrHist[VtoterrHist.>0]
 end
 
+
 function lap_opt(H::Ham,x::Array{Float64,1})
     # we ask for a 2 vector, given that we will consider the vector to be
     xFourier = rfft(x)
     laplacian_fourier_mult!(xFourier, H.Ls)
     return irfft(xFourier, H.Ns )
+end
+
+function lap_opt!(H::Ham,x::Array{Float64,1})
+    # we ask for a 2 vector, given that we will consider the vector to be
+    xFourier = rfft(x)
+    laplacian_fourier_mult!(xFourier, H.Ls)
+    x[:] = irfft(xFourier, H.Ns )
 end
 
 function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )

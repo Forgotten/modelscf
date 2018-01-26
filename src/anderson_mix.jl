@@ -33,7 +33,7 @@ function anderson_mix(vin, vout, beta, ymat, smat, iter::Int64, mixdim)
     inext = iter - round(Integer, floor((iter - 1) / mixdim)) * mixdim;
     ymat[:,inext] = res;
     smat[:,inext] = vin;
-
+    
     vnew = vopt - beta*ropt;
 
     return (vnew, ymat, smat)
