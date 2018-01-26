@@ -4,24 +4,23 @@ o Basic SCF.
 
 o Preconditioning strategies 
 
-o Atomic force evaluation and relaxation. 
+o Ze. Atomic force evaluation and relaxation.  Density functional perturbation theory, and notebook
 
-o Density functional perturbation theory, and notebook
+o Jiefu. Projection based embedding theory (require model XC)
 
-o Projection based embedding theory (require model XC)
+o Dong. TDDFT, and Notebook
 
-o TDDFT, and Notebook
-
-o Notebook: One dimensional H_2^+ molecule. Compare with minimal basis set
+o Michael. Notebook: One dimensional H_2^+ molecule. Compare with minimal basis set
 approximation
 
-o Notebook: 1-d crystal. Band structure plot. Brillouin zone sampling.
+o Yu. Notebook: 1-d crystal. Band structure plot. Brillouin zone sampling.
 
-o Notebook: demonstrate how SCF works. Insulator and metal.
+o Done. Notebook: demonstrate how SCF works. Insulator and metal.
 
-o Notebook: Hartree-Fock ansatz for He atom
+o Jeffmin: Notebook: Hartree-Fock ansatz for He atom / H2
+
+o Weile: Notebook: time-dependent DFT. Casida formalism. Compare with
+time-dependent simulation.
 
 o Notebook: Localization. SCDM and Wannier.
 
-o Notebook: time-dependent DFT. Casida formalism. Compare with
-time-dependent simulation.
