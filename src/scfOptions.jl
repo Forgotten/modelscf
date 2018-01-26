@@ -59,13 +59,14 @@ mutable struct andersonPrecMixOptions <: mixingOptions
 end
 
 
-mutable struct kerkMixOptions <: mixingOptions
-    KerkerB
-    kx
-    YukawaK
-    epsil0
-    function kerkMixOptions(KerkerB, kx, YukawaK, epsil0)
-        new(KerkerB, kx, YukawaK, epsil0)
+mutable struct kerkerMixOptions <: mixingOptions
+    betamix::Float64
+    KerkerB::Float64
+    kx::Array{Float64,2}
+    YukawaK::Float64
+    epsil0::Float64
+    function kerkerMixOptions(betamix,KerkerB, kx, YukawaK, epsil0)
+        new(betamix,KerkerB, kx, YukawaK, epsil0)
     end
 end
 
