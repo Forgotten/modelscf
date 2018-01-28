@@ -11,7 +11,7 @@ mutable struct Ham
     rho::Array{Float64,2}                # electron density
     Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
     Vtot::Array{Float64,2}               # total energy
-    drhoa  # derivative of the pseudo-charge
+    drhoa::Array{Float64,2}              # derivative of the pseudo-charge (on each atom)
     ev::Array{Float64,1}
     psi::Array{Float64,2}
     fermi::Float64
@@ -51,7 +51,7 @@ mutable struct Ham
         kx[:,1] = vcat( collect(0:Ns/2-1), collect( -Ns/2:-1) )* 2 * pi / Ls;
         kmul = kx.^2/2;
 
-        rhoa = pseudocharge(gridpos, Ls_glb, atoms,YukawaK,epsil0);
+        rhoa, drhoa = pseudocharge(gridpos, Ls_glb, atoms,YukawaK,epsil0);
 
         # TODO: we need to figure out the type of each of the fields to properlu
         # initialize them
@@ -59,7 +59,7 @@ mutable struct Ham
         rho = zeros(1,1);
         Vhar = zeros(1,1);
         Vtot = zeros(1,1);
-        drhoa = []
+        # drhoa = []
         ev = []
         psi = zeros(1,1);
         fermi = 0.0;

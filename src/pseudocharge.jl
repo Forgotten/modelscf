@@ -21,5 +21,12 @@ rhoa = zeros(Nsglb);
         rhoa = rhoa - Z[j]./sqrt(2*pi*sigma[j]^2) .* (exp.(-0.5*(d./sigma[j]).^2 ));
     end
 
-    return rhoa
+drhoa = zeros(Nsglb, Natoms);
+
+    for j=1:Natoms
+        d = R[j] - gridpos;
+        d = d - round.(Integer, d/Ls)*Ls;
+        drhoa[:,j] = drhoa[:,j] - Z[j] ./sqrt(2*pi*sigma[j]^2)./sigma[j]^2 .* (exp.(-0.5*(d./sigma[j]).^2));
+    end
+    return rhoa, drhoa
 end
