@@ -97,6 +97,11 @@ function *(H::Ham, X::Array{Float64,2})
     Y = zeros(size(X));
     A_mul_B!(Y, H, X)
     return Y
+    # # new version that acts on the full matrices
+    # Y_lap  = lap(H,X);
+    # Y_vtot = Vtot(H,X);
+    #
+    # return Y_lap + Y_vtot;
 end
 
 
@@ -209,6 +214,15 @@ function lap(H::Ham,x::Array{Float64,1})
     return real(ifft(ytemp))
 end
 
+function lap(H::Ham,x::Array{Float64,2})
+    # application of the laplacian part to a matrix.
+    # TODO: this can be optimized using rfft
+    # TODO: we can surther accelerate this using a in-place multiplication
+
+    ytemp = broadcast(*,H.kmul,fft(x,1));
+    return real(ifft(ytemp,1))
+end
+
 function inv_lap(H::Ham,x::Array{Float64,1})
     # inverse laplacian, to be used as a preconditioner for the
     # lobpcg algorithm
@@ -222,10 +236,14 @@ function inv_lap(H::Ham,x::Array{Float64,1})
 end
 
 function Vtot(H::Ham,x::Array{Float64,1})
-    # application of the potential part of the Hamiltonian
+    # application of the potential part of the Hamiltonian to a vector
     return (H.Vtot).*x
 end
 
+function Vtot(H::Ham, X::Array{Float64,2})
+    # application of the potential part of the Hamiltonian to a matric
+    return broadcast(*,H.Vtot, X)
+end
 
 
 function hartree_pot_bc(rho, H::Ham)
