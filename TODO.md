@@ -2,9 +2,9 @@ Wishlist for the usage of 1-D code
 
 o Basic SCF.
 
-o Preconditioning strategies 
+o Preconditioning strategies
 
-o Ze. Atomic force evaluation and relaxation.  Density functional perturbation theory, and notebook
+o Ze. Atomic force evaluation and relaxation. (Done.) Density functional perturbation theory, and notebook
 
 o Jiefu. Projection based embedding theory (require model XC)
 
@@ -23,4 +23,3 @@ o Weile: Notebook: time-dependent DFT. Casida formalism. Compare with
 time-dependent simulation.
 
 o Notebook: Localization. SCDM and Wannier.
-
