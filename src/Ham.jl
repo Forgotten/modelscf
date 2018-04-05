@@ -415,3 +415,355 @@ function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )
         @inbounds R[ii] = (ii-1)^2*c*R[ii]
     end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#SCF with LDA calculation
+function scf_high!(H::Ham, scfOpts::scfOptions)
+
+    # vector containing the hostorical of the results
+    VtoterrHist = zeros(scfOpts.scfiter)
+    eigOpts = scfOpts.eigOpts;
+    mixOpts = scfOpts.mixOpts;
+
+    # number of occupied states
+    Nocc = round(Integer, sum(H.atoms.nocc) / H.nspin);
+
+    # we test first updating the psi
+
+    for ii = 1:scfOpts.scfiter
+        # solving the linear eigenvalues problem
+        update_psi_high!(H, eigOpts);
+
+        # update the electron density
+        update_rho_high!(H,Nocc);
+
+        # update the total potential, and compute the
+        # differnce between the potentials
+        Verr = update_vtot_high!(H, mixOpts);
+
+        # save the error
+        VtoterrHist[ii] = Verr ;
+        # test if the problem had already satiesfied the tolerance
+        if scfOpts.SCFtol > Verr
+            break
+        end
+    end
+
+    return VtoterrHist[VtoterrHist.>0]
+end
+
+
+function LDAexchange(H::Ham, rho::Array{Float64,2})
+
+    dx = H.dx;
+    Energy = -3/4*0.1*(3/pi)^(1/3) * dx * sum(rho.^(4/3));
+    return Energy
+
+end
+function LDAexchangeFunc(rho::Array{Float64,2})
+    
+   v = -0.1*(3/pi)^(1/3) * rho.^(1/3);
+   return v
+end
+
+
+function init_pot_high!(H::Ham, nocc::Int64)
+    # nocc number of occupied states
+    #function to initialize the potential in the Hamiltonian class
+    rho  = -H.rhoa;
+    rho  = rho / ( sum(rho)*H.dx) * (nocc*H.nspin);
+    H.rho = rho;
+    H.Vhar = hartree_pot_bc(H.rho+H.rhoa, H);
+    H.Vtot = H.Vhar;   # No exchange-correlation
+    H.Vtot = H.Vtot - mean(H.Vtot);# IMPORTANT (zero mean?)
+end
+
+function update_pot_high!(H::Ham)
+     # TODO: I dont' know in how many different ways this si updateded
+     # computing the hartree potenatial
+    H.Vhar = hartree_pot_bc(H.rho+H.rhoa,H);
+    Vex = LDAexchangeFunc(H.rho);
+    Vtotnew  = H.Vhar+Vex;  #  with LDA exchange
+    Verr = norm(Vtotnew-H.Vtot)./norm(H.Vtot); # computing the relative error
+
+
+    # NOTE: H.Fband is only the band energy here.  The real total energy
+    # is calculated using the formula below:
+    H.Ftot = H.Fband + 1/2 * sum((H.rhoa-H.rho).*H.Vhar)*dx;
+    return (Vtotnew,Verr) # returns the differnece betwen two consecutive iterations
+end
+
+function update_vtot_high!(H::Ham, mixOpts)
+    # TODO here we need to implement the andersson mix
+    # I added the signature
+
+    (Vtotnew,Verr) = update_pot_high!(H)
+
+    # TODO: add a swtich to use different kinds of mixing here
+    betamix = mixOpts.betamix;
+    mixdim = mixOpts.mixdim;
+    ymat = mixOpts.ymat;
+    smat = mixOpts.smat;
+    iter = mixOpts.iter;
+
+    (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
+        betamix, ymat, smat, iter, mixdim);
+
+    # they are already modified inside the function
+    # mixOpts.ymat = ymat;
+    # mixOpts.smat = smat;
+    mixOpts.iter += 1;
+
+    # updating total potential
+    H.Vtot = Vtotmix;
+    return Verr
+end
+
+function update_psi_high!(H::Ham, eigOpts::eigOptions)
+    # we need to add some options to the update
+    # functio to solve the eigenvalue problem for a given rho and Vtot
+
+    if eigOpts.eigmethod == "eigs"
+        
+        Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
+        # TODO: make sure that eigs works with overloaded operators
+        # TODO: take a look a the interface of eigs in Julia
+        (ev,psi,nconv,niter,nmult,resid) = eigs(Hmatrix,   # Hamiltonian
+                                                nev=H.Neigs, # number of eigs
+                                                which=:SR, # small real part
+                                                ritzvec=true, # provide Ritz v
+                                                tol=eigOpts.eigstol, # tolerance
+                                                maxiter=eigOpts.eigsiter) #maxiter
+        #assert(flag == 0);
+        # TODO: this has a bug somewhere !!!! fix me!!!!
+    elseif  eigOpts.eigmethod == "lobpcg_sep"
+        # not working... to be fixed
+        X0 = qr(rand(H.Ns, H.Neigs), thin = true)[1]
+        prec(x) = inv_lap(H,x)
+
+        (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
+                            tol= eigOpts.eigstol,
+                            maxiter=eigOpts.eigsiter)
+    end
+
+    # sorting the eigenvalues, eigs already providesd them within a vector
+    ind = sortperm(ev);
+    # updating the eigenvalues
+    H.ev = ev[ind]
+    # updating the eigenvectors
+    H.psi = psi[:, ind];
+end
+
+
+
+function update_rho_high!(H::Ham, nocc::Int64)
+
+    ev = H.ev;
+    (occ, fermi) = get_occ(ev, nocc, H.Tbeta);
+    occ = occ * H.nspin;
+    rho = sum(H.psi.^2*diagm(occ),2)/H.dx;
+
+    # Total energy
+    E = sum(ev.*occ);
+
+    # Helmholtz free energy
+    intg = H.Tbeta*(fermi-ev);
+    ff = zeros(H.Neigs,1);
+    for i = 1 : H.Neigs
+      if( intg[i] > 30 )  # Avoid numerical problem.
+        ff[i] = ev[i]-fermi;
+      else
+        ff[i] = -1/H.Tbeta * log(1+exp(intg[i]));
+      end
+    end
+    F = sum(ff.*occ) + fermi * nocc * H.nspin;
+
+    H.occ = occ;
+    H.fermi = fermi;
+    H.Eband = E;
+    H.Fband = F;
+    H.rho = rho;
+end
+
+
+
+
+
+
+
+
+
+
+#Embedding calculation
+function scf_AinB!(H::Ham, scfOpts::scfOptions,Orbitals_B::Array{Float64,2})
+
+    # vector containing the hostorical of the results
+    VtoterrHist = zeros(scfOpts.scfiter)
+    eigOpts = scfOpts.eigOpts;
+    mixOpts = scfOpts.mixOpts;
+
+    # number of occupied states
+    Nocc = round(Integer, sum(H.atoms.nocc) / H.nspin);
+
+    # we test first updating the psi
+
+    for ii = 1:scfOpts.scfiter
+        # solving the linear eigenvalues problem
+        update_psi_AinB!(H, eigOpts,Orbitals_B);
+
+        # update the electron density
+        update_rho_AinB!(H,Nocc);
+
+        # update the total potential, and compute the
+        # differnce between the potentials
+        Verr = update_vtot_AinB!(H, mixOpts,Orbitals_B);
+
+        # save the error
+        VtoterrHist[ii] = Verr ;
+        # test if the problem had already satiesfied the tolerance
+        if scfOpts.SCFtol > Verr
+            break
+        end
+    end
+
+    return VtoterrHist[VtoterrHist.>0]
+end
+
+
+function init_pot_AinB!(H::Ham, nocc::Int64,Orbitals_B::Array{Float64,2})
+    # nocc number of occupied states
+    #function to initialize the potential in the Hamiltonian class
+    rho  = -H.rhoa;
+    rho  = rho / ( sum(rho)*H.dx) * (nocc*H.nspin);
+    H.rho = rho;
+    rho_B = sum(Orbitals_B.^2,2)/H.dx;
+    H.Vhar = hartree_pot_bc(H.rho+H.rhoa+rho_B, H);
+    H.Vtot = H.Vhar;   # No exchange-correlation
+    H.Vtot = H.Vtot - mean(H.Vtot);# IMPORTANT (zero mean?)
+end
+
+function update_pot_AinB!(H::Ham,Orbitals_B::Array{Float64,2})
+     # TODO: I dont' know in how many different ways this si updateded
+     # computing the hartree potenatial
+    rho_B = sum(Orbitals_B.^2,2)/H.dx;
+    H.Vhar = hartree_pot_bc(H.rho+H.rhoa+rho_B,H);
+    Vex = LDAexchangeFunc(H.rho);
+    Vtotnew  = H.Vhar+Vex;  #  with LDA exchange
+    Verr = norm(Vtotnew-H.Vtot)./norm(H.Vtot); # computing the relative error
+
+
+    # NOTE: H.Fband is only the band energy here.  The real total energy
+    # is calculated using the formula below:
+    H.Ftot = H.Fband + 1/2 * sum((H.rhoa-H.rho).*H.Vhar)*dx;
+    return (Vtotnew,Verr) # returns the differnece betwen two consecutive iterations
+end
+
+function update_vtot_AinB!(H::Ham, mixOpts,Orbitals_B::Array{Float64,2})
+    # TODO here we need to implement the andersson mix
+    # I added the signature
+
+    (Vtotnew,Verr) = update_pot_AinB!(H,Orbitals_B)
+
+    # TODO: add a swtich to use different kinds of mixing here
+    betamix = mixOpts.betamix;
+    mixdim = mixOpts.mixdim;
+    ymat = mixOpts.ymat;
+    smat = mixOpts.smat;
+    iter = mixOpts.iter;
+
+    (Vtotmix,ymat,smat) = anderson_mix(H.Vtot,Vtotnew,
+        betamix, ymat, smat, iter, mixdim);
+
+    # they are already modified inside the function
+    # mixOpts.ymat = ymat;
+    # mixOpts.smat = smat;
+    mixOpts.iter += 1;
+
+    # updating total potential
+    H.Vtot = Vtotmix;
+    return Verr
+end
+
+function update_psi_AinB!(H::Ham, eigOpts::eigOptions,Orbitals_B::Array{Float64,2})
+    # we need to add some options to the update
+    # functio to solve the eigenvalue problem for a given rho and Vtot
+
+    if eigOpts.eigmethod == "eigs"
+        
+        Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
+        Gamma_B = Orbitals_B*Orbitals_B';
+        Q = eye(size(Orbitals_B,1))-dx*Gamma_B;
+        Hmatrix = Q*Hmatrix*Q;
+        Hmatrix = 1/2*(Hmatrix+Hmatrix');
+        # TODO: make sure that eigs works with overloaded operators
+        # TODO: take a look a the interface of eigs in Julia
+        (ev,psi,nconv,niter,nmult,resid) = eigs(Hmatrix,   # Hamiltonian
+                                                nev=H.Neigs, # number of eigs
+                                                which=:SR, # small real part
+                                                ritzvec=true, # provide Ritz v
+                                                tol=eigOpts.eigstol, # tolerance
+                                                maxiter=eigOpts.eigsiter) #maxiter
+        #assert(flag == 0);
+        # TODO: this has a bug somewhere !!!! fix me!!!!
+    elseif  eigOpts.eigmethod == "lobpcg_sep"
+        # not working... to be fixed
+        X0 = qr(rand(H.Ns, H.Neigs), thin = true)[1]
+        prec(x) = inv_lap(H,x)
+
+        (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
+                            tol= eigOpts.eigstol,
+                            maxiter=eigOpts.eigsiter)
+    end
+
+    # sorting the eigenvalues, eigs already providesd them within a vector
+    ind = sortperm(ev);
+    # updating the eigenvalues
+    H.ev = ev[ind];
+    # updating the eigenvectors
+    H.psi = psi[:, ind];
+end
+
+
+
+function update_rho_AinB!(H::Ham, nocc::Int64)
+
+    ev = H.ev;
+    (occ, fermi) = get_occ(ev, nocc, H.Tbeta);
+    occ = occ * H.nspin;
+    rho = sum(H.psi.^2*diagm(occ),2)/H.dx;
+    #rho = sum(H.psi.^2*diagm(occ),2);
+
+    # Total energy
+    E = sum(ev.*occ);
+
+    # Helmholtz free energy
+    intg = H.Tbeta*(fermi-ev);
+    ff = zeros(H.Neigs,1);
+    for i = 1 : H.Neigs
+      if( intg[i] > 30 )  # Avoid numerical problem.
+        ff[i] = ev[i]-fermi;
+      else
+        ff[i] = -1/H.Tbeta * log(1+exp(intg[i]));
+      end
+    end
+    F = sum(ff.*occ) + fermi * nocc * H.nspin;
+
+    H.occ = occ;
+    H.fermi = fermi;
+    H.Eband = E;
+    H.Fband = F;
+    H.rho = rho;
+end
