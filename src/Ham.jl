@@ -199,6 +199,11 @@ function update_rho!(H::Ham, nocc::Int64)
     H.rho = rho;
 end
 
+function update_rhoa!(H::Ham)
+
+    H.rhoa, H.drhoa = pseudocharge(H.gridpos, H.Ls, H.atoms,H.YukawaK,H.epsil0);
+end
+
 function lap(H::Ham,x::Array{Float64,1})
     # we ask for a vector, given that we will consider the vector to be
     # a nx1 matrix
@@ -395,5 +400,19 @@ function laplacian_fourier_mult!(R::Vector{Complex128}, Ls::Float64 )
     c = (2 * pi / Ls)^2/2
     @simd for ii = 1:length(R)
         @inbounds R[ii] = (ii-1)^2*c*R[ii]
+    end
+end
+
+
+# Function to compute the force and update ham.atoms.force
+function get_force!(H::Ham)
+    atoms  = H.atoms
+    Natoms = atoms.Natoms
+    rhotot = H.rho + H.rhoa
+    for i=1:Natoms
+        # IMPORTANT: derivative is taken w.r.t atom positions, which introduces the minus sign
+        dV = -hartree_pot_bc_opt_vec(H.drhoa[:,i], H.Ls, H.YukawaK, H.epsil0)
+        # Force is negative gradient
+        atoms.force[i] = - sum(dV.*rhotot)*H.dx
     end
 end
