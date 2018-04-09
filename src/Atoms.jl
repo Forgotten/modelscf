@@ -12,4 +12,9 @@ mutable struct Atoms
      function Atoms(Natoms, R, sigma, omega, Eqdist, mass, Z, nocc, force)
          return new(Natoms, R, sigma, omega, Eqdist, mass, Z, nocc, force)
      end
+     #TODO:   this is a hack to make this thing work we need to come back and find
+     #         how to properly define this function
+     function Atoms(Natoms, R, sigma, omega, Eqdist, mass, Z, nocc)
+         return new(Natoms, R, sigma, omega, Eqdist, mass, Z, nocc, 0*nocc)
+     end
 end
