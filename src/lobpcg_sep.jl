@@ -35,13 +35,16 @@ P = [];
 AP = [];
 D = diagm(lambda);
 
+# absolute residual
 absr = zeros(k);
+# relative residual
 relr = zeros(k);
 
 iter = 1;
 for iter = 1:maxiter
     # Check convergence
     R = AX - X*D;
+    # number of converged eigenvectors
     nconv = 0;
     for j = 1:k
         absr[j] = norm(R[:, j], 2);
@@ -53,8 +56,7 @@ for iter = 1:maxiter
     end
     maxr = maximum(relr[1:k]);
     if verbose
-#        fprintf('#3d: #.2e\n', iter, maxr);
-        print("iter = ", iter);
+        println("iter = ", iter);
         for j = 1:k
             println("  theta(",j,") = " ,lambda[j]," ,  res(",j,") = ",relr[j]);
         end
@@ -101,8 +103,7 @@ for iter = 1:maxiter
     AP = AU*Q[:, k+1:2*k];
     lambda = lambda[1:k];
     D = diagm(lambda)
-
-    end
+end
 
 X = X[:, 1:k];
 

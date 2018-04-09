@@ -40,17 +40,18 @@ mutable struct Ham
         posidx   = 0;
 
         # Initialize the atom positions
-        atoms   = atoms;
-        Neigs = sum(atoms.nocc) + n_extra;
+        atoms = atoms;  ## what is this for?
+        Neigs = sum(atoms.nocc) + n_extra; # number of eigenvalues to be computed
 
-        Ls_glb = Ls;
-        Ns_glb = Ns;
+        Ls_glb = Ls; # global lenght
+        Ns_glb = Ns; # global number of degrees of freedom
 
         # we define the Fourier multipliers as an 2D array
         kx = zeros(Ns,1);
         kx[:,1] = vcat( collect(0:Ns/2-1), collect( -Ns/2:-1) )* 2 * pi / Ls;
         kmul = kx.^2/2;
 
+        # pseudo charge defined for the position of the atoms
         rhoa = pseudocharge(gridpos, Ls_glb, atoms,YukawaK,epsil0);
 
         # TODO: we need to figure out the type of each of the fields to properlu
