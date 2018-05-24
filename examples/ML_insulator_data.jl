@@ -11,7 +11,7 @@ include("../src/getocc.jl")
 
 using HDF5
 
-Nsamples = 10;
+Nsamples = 5;
 
 dx = 0.25;
 Nunit = 8;
@@ -32,8 +32,6 @@ mixdim = 10;
 Ndist  = 1;   # Temporary variable
 Natoms = round(Integer, Nunit / Ndist); # number of atoms
 
-
-
 sigma  = ones(Natoms,1)*(2.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
@@ -41,17 +39,19 @@ mass   = ones(Natoms,1)*42000.0;
 nocc   = ones(Natoms,1);          # number of electrons per atom
 Z      = nocc
 
-
 Ns =round(Integer, Lat*Ndist/dx*Nunit)
-
-
 
 Input = zeros(Ns, Nsamples)
 Output = zeros(Ns, Nsamples)
 
 for ii = 1:Nsamples
 
-R = Lat*Nunit*rand(Natoms,1);
+R = (Lat*Nunit)*rand(Natoms,1) ;
+
+# we make sure that the potential wells are not to close to each other
+while (minimum(diff(sort(R[:])))< 2*sigma[1,1] )
+    R = (Lat*Nunit)*rand(Natoms,1);
+end
 
 # R = zeros(Natoms, 1); # this is defined as an 2D array
 # for j = 1:Natoms
@@ -74,9 +74,12 @@ init_pot!(ham, Nocc)
 mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
 
 # we use the default options
-eigOpts = eigOptions();
+eigOpts = eigOptions(1e-12, 10000, "eigs");
 
-scfOpts = scfOptions(eigOpts, mixOpts)
+scfOpts = scfOptions(1e-10,300, eigOpts, mixOpts)
+
+#scfOpts = scfOptions(eigOpts, mixOpts)
+# print(scfOpts)
 
 # running the scf iteration
 @time VtoterrHist = scf!(ham, scfOpts)
@@ -86,7 +89,5 @@ Output[:,ii] = ham.rho[:];
 
 end
 
-h5write("Input.h5", "Input", Input)
-
-
-h5write("Output.h5", "Output", Output)
+# h5write("Input_Full_SCF.h5", "Input", Input)
+# h5write("Output_Full_SCF.h5", "Output", Output)

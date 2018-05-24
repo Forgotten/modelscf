@@ -10,7 +10,7 @@ mutable struct Ham
     rhoa::Array{Float64,2}               # pseudo-charge for atoms (negative)
     rho::Array{Float64,2}                # electron density
     Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
-    Vtot::Array{Float64,2}               # total energy
+    Vtot::Array{Float64,2}               # total potential
     drhoa::Array{Float64,2}              # derivative of the pseudo-charge (on each atom)
     ev::Array{Float64,1}
     psi::Array{Float64,2}
@@ -466,7 +466,7 @@ function LDAexchange(H::Ham, rho::Array{Float64,2})
 
 end
 function LDAexchangeFunc(rho::Array{Float64,2})
-    
+
    v = -0.1*(3/pi)^(1/3) * rho.^(1/3);
    return v
 end
@@ -529,7 +529,7 @@ function update_psi_high!(H::Ham, eigOpts::eigOptions)
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
     if eigOpts.eigmethod == "eigs"
-        
+
         Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
@@ -694,7 +694,7 @@ function update_psi_AinB!(H::Ham, eigOpts::eigOptions,Orbitals_B::Array{Float64,
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
     if eigOpts.eigmethod == "eigs"
-        
+
         Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
         Gamma_B = Orbitals_B*Orbitals_B';
         Q = eye(size(Orbitals_B,1))-dx*Gamma_B;
