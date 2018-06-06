@@ -14,9 +14,9 @@
 
 include("BabyHam.jl")
 using HDF5
-FFTW.set_num_threads(Sys.CPU_CORES/2)
+FFTW.set_num_threads(round(Integer,Sys.CPU_CORES/2))
 # in this case we suppose a simple
-Nsamples = 20000;
+Nsamples = 20;
 
 dx = 0.25
 Nunit = 8;

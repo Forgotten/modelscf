@@ -16,8 +16,15 @@ include("BabyHam.jl")
 using HDF5
 FFTW.set_num_threads(16)
 
+ # number of electrons (or in this case Gaussian bumps)
+if length(ARGS) > 0
+    Ne = parse(Int64,ARGS[1])
+else
+    Ne = 2
+end
+
 # in this case we suppose a simple
-Nsamples = 200;
+Nsamples = 20000;
 
 dx = 0.25
 Nunit = 8;
@@ -34,12 +41,7 @@ gridpos[:,1] = collect(0:Ns-1).'.*dx;
 gridposPer = zeros(3*Ns,1) # allocating as a 2D Array
 gridposPer[:,1] = collect(-Ns:2*Ns-1).'.*dx;
 
-
-
-sigma = 2; # spread of the Gaussian wells
-Ne =  2; # number of electrons (or in this case Gaussian bumps)
-coeffMin = 0.8   # min value for the Gaussian depth
-coeffMax = 1.2   # max value for the Gaussian depth
+sigma = 2;
 
 # building the Hamiltonian( we will use it extensively)
 H = BabyHam(Lat, Nunit, dx, gridpos); # we use a dummy potential in this case
@@ -54,7 +56,7 @@ for ii = 1:Nsamples
     # we don't want the potentials too close to the boundary of
     # the computational domain
     R = (Lat*Nunit-4*sigma )*rand(1,Ne) ;
-    coeff = coeffMin + (coeffMax-coeffMin)*rand(1,Ne);
+    coeff = 0.8 + 0.4*rand(1,Ne) ;
 
     # we make sure that the potential wells are not to close to each other
     while (minimum(diff(sort(R[:])))< 4*sigma )
@@ -75,6 +77,8 @@ for ii = 1:Nsamples
 
 end
 
+Input_str = string("Input_KS_", Ne,"_puits.h5")
+Output_str = string("Output_KS_", Ne,"_puits.h5")
 
-h5write("Input_KS_4_puits.h5", "Input", Input)
-h5write("Output_KS_4_puits.h5", "Output", Output)
+h5write(Input_str, "Input", Input)
+h5write(Output_str, "Output", Output)
