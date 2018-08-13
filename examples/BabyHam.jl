@@ -130,7 +130,7 @@ function compute_psi(H::BabyHam, Neigs, eigstol=1e-12, eigsiter=10000 )
     # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev);
     # return the eigenvectors
-    return psi[:, ind[1:Neigs]];
+     (psi[:, ind[1:Neigs]], ev[1:Neigs+1]);
 end
 
 function compute_rho(H::BabyHam, psi)
