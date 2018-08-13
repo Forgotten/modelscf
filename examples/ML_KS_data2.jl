@@ -15,8 +15,9 @@
 include("BabyHam.jl")
 using HDF5
 FFTW.set_num_threads(round(Integer,Sys.CPU_CORES/2))
+
 # in this case we suppose a simple
-Nsamples = 20;
+Nsamples = 200000;
 
 dx = 0.25
 Nunit = 8;
@@ -34,7 +35,7 @@ gridposPer = zeros(3*Ns,1) # allocating as a 2D Array
 gridposPer[:,1] = collect(-Ns:2*Ns-1).'.*dx;
 
 
-Ne = 3; # number of electrons (or in this case Gaussian bumps)
+Ne = 2; # number of electrons (or in this case Gaussian bumps)
 sigmaMax = 2.4
 sigmaMin = 1.6
 coeffMin = 0.8   # min value for the Gaussian depth
@@ -57,14 +58,14 @@ for ii = 1:Nsamples
     sigma = sigmaMin + (sigmaMax-sigmaMin)*rand(1,Ne);
 
     # we make sure that the potential wells are not to close to each other
-    while (minimum(diff(sort(R[:])))< 5*sigmaMin )
+    while (minimum(diff(sort(R[:])))< 4*sigmaMin )
         R = (Lat*Nunit)*rand(1,Ne);
     end
 
     println(ii)
-    gridpos = broadcast(-, gridposPer, R)
-    gridpos = broadcast(/, gridpos, sigma)
-    V = -exp.(-gridpos.^2/2 )
+    grispos = broadcast(-, gridposPer, R)
+    grispos = broadcast(/, grispos, sigma)
+    V = -exp.(-grispos.^2/2 )
     V = reshape(sum( broadcast(*, V, coeff), 2), Ns,3)
     V = sum(V,2)
 
@@ -79,5 +80,10 @@ for ii = 1:Nsamples
 end
 
 
-h5write("Input_KS_3_rand_width.h5", "Input", Input)
-h5write("Output_KS_3_rand_width.h5", "Output", Output)
+
+Input_str = string("Input_KS_", Ne,"_rand2_large.h5")
+Output_str = string("Output_KS_", Ne,"_rand2_large.h5")
+
+h5write(Input_str, "Input", Input)
+h5write(Output_str, "Output", Output)
+

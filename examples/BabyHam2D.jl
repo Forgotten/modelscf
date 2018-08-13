@@ -56,6 +56,14 @@ function *(H::BabyHam2D, X::Array{Float64,2})
     return Y_lap + Y_vtot;
 end
 
+function min_distance(X::Array{Float64,1}, Y::Array{Float64,1})
+    Xall = broadcast(-,X , X')
+    Yall = broadcast(-,Y , Y')
+
+    dist = sqrt.(Xall.^2 + Yall.^2)
+
+    return minimum(sort(dist,2)[:,2])
+end
 
 function A_mul_B!(Y::Array{Float64,2}, H::BabyHam2D, V::Array{Float64,2})
     # in place matrix matrix multiplication
@@ -139,7 +147,7 @@ function compute_psi(H::BabyHam2D, Neigs, eigstol=1e-12, eigsiter=10000 )
     # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev);
     # return the eigenvectors
-    return psi[:, ind[1:Neigs]];
+    return (psi[:, ind[1:Neigs]], ev[1:Neigs+1]);
 end
 
 function compute_rho(H::BabyHam2D, psi)
