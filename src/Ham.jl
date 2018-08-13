@@ -165,6 +165,12 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
                             maxiter=eigOpts.eigsiter)
     end
 
+elseif  eigOpts.eigmethod == "eig"
+        # we use a dense orthogonalization 
+        A = create_Hamiltonian(H)
+    end
+
+
     # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev);
     # updating the eigenvalues
@@ -207,6 +213,13 @@ end
 function update_rhoa!(H::Ham)
 
     H.rhoa, H.drhoa = pseudocharge(H.gridpos, H.Ls, H.atoms,H.YukawaK,H.epsil0);
+end
+
+function create_Hamiltonian(H::Ham)
+    # create the matrix version of the Hmailtonian 
+      A = real(ifft(diagm(H.kmul[:])*fft( eye(length(H.kmul)),1),1 ));
+      A += diagm(H.Vtot[:])
+    return A
 end
 
 function lap(H::Ham,x::Array{Float64,1})
