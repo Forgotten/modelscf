@@ -148,7 +148,7 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
         (ev,psi,nconv,niter,nmult,resid) = eigs(H,   # Hamiltonian
-                                                nev=H.Neigs, # number of eigs
+                                                nev=H.Neigs+4, # number of eigs
                                                 which=:SR, # small real part
                                                 ritzvec=true, # provide Ritz v
                                                 tol=eigOpts.eigstol, # tolerance
@@ -163,16 +163,19 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
                             tol= eigOpts.eigstol,
                             maxiter=eigOpts.eigsiter)
-    end
-
-elseif  eigOpts.eigmethod == "eig"
-        # we use a dense orthogonalization 
+    elseif  eigOpts.eigmethod == "eig"
+        # we use a dense diagonalization 
         A = create_Hamiltonian(H)
+        if ~ issymmetric(A)
+            println("A is not symmetric")
+        end
+        (ev, psi) = eig(A)
+
     end
 
 
     # sorting the eigenvalues, eigs already providesd them within a vector
-    ind = sortperm(ev);
+    ind = sortperm(ev)[1:H.Neigs];
     # updating the eigenvalues
     H.ev = ev[ind]
     # updating the eigenvectors
@@ -219,7 +222,8 @@ function create_Hamiltonian(H::Ham)
     # create the matrix version of the Hmailtonian 
       A = real(ifft(diagm(H.kmul[:])*fft( eye(length(H.kmul)),1),1 ));
       A += diagm(H.Vtot[:])
-    return A
+      # we symmetrize A
+    return 0.5*(A + A')
 end
 
 function lap(H::Ham,x::Array{Float64,1})
