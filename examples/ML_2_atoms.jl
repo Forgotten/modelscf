@@ -37,7 +37,7 @@ mixdim = 10;
 Ndist  = 1;   # Temporary variable
 Natoms = 2; # number of atoms
 
-sigma  = ones(Natoms,1)*(2.0);  # insulator
+sigma  = ones(Natoms,1)*(4.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
 mass   = ones(Natoms,1)*42000.0;
