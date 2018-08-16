@@ -12,7 +12,7 @@ using HDF5
 FFTW.set_num_threads(round(Integer,Sys.CPU_CORES/2))
 
 #number of samples
-Nsamples = 10;
+Nsamples = 200;
 
 
 dx = 0.5;
@@ -37,7 +37,7 @@ mixdim = 10;
 Ndist  = 1;   # Temporary variable
 Natoms = 2; # number of atoms
 
-sigma  = ones(Natoms,1)*(4.0);  # insulator
+sigma  = ones(Natoms,1)*(2.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
 mass   = ones(Natoms,1)*42000.0;
@@ -86,8 +86,8 @@ for ii = 1:Nsamples
     println(length(VtoterrHist))
 end
 
-Input_str = string("Input_KS_scf_", Natoms,".h5")
-Output_str = string("Output_KS_scf_", Natoms,".h5")
+Input_str = string("Input_KS_scf_", Natoms,"_sigma_", sigma[1],".h5")
+Output_str = string("Output_KS_scf_", Natoms,"_sigma_", sigma[1],".h5")
 
 isfile(Output_str) && rm(Output_str)
 isfile(Input_str)  && rm(Input_str)
