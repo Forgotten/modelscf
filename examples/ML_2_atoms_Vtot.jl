@@ -63,7 +63,7 @@ for ii = 1:Nsamples
 
     # allocating a Hamiltonian
     ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0, Tbeta)
-    #Input[:,ii] = ham.rhoa[:];
+    Input[:,ii] = ham.rhoa[:];
 
     # total number of occupied orbitals
     Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
