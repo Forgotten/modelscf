@@ -25,6 +25,8 @@ Tbeta = au2K / T_elec;
 
 betamix = 0.5;
 mixdim = 10;
+KerkerB = 0.5;
+
 
 Ndist  = 1;   # Temporary variable
 Natoms = round(Integer, Nunit / Ndist); # number of atoms
@@ -53,8 +55,10 @@ Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
 # initialize the potentials within the Hemiltonian, setting H[\rho_0]
 init_pot!(ham, Nocc)
 
-# we use the anderson mixing of the potential
+# # we use the anderson mixing of the potential
 mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
+
+# mixOpts = kerkerMixOptions(betamix,KerkerB, ham.kmul , YukawaK, epsil0)
 
 # we use the default options
 eigOpts = eigOptions();
