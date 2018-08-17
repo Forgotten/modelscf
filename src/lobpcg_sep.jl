@@ -27,6 +27,7 @@ tol_deflation = min(tol, 1024*eps(1.0));
 AX = H*X;
 Ap = X'*AX;
 
+# symmetrizing Ap
 Ap = (Ap' + Ap)/2; ##
 (lambda, V) = eig(Ap);
 X = X*V;

@@ -35,7 +35,7 @@ for j = 1:Natoms
   R[j] = Ls/(Natoms+1)*j
 end
 
-sigma  = ones(Natoms,1)*(4.0);  # insulator
+sigma  = ones(Natoms,1)*(2.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
 mass   = ones(Natoms,1)*42000.0;

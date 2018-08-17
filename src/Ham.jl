@@ -1,3 +1,5 @@
+include("lobpcg_sep.jl")
+
 mutable struct Ham
     Ns::Int64
     Ls::Float64
@@ -161,18 +163,16 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         prec(x) = inv_lap(H,x)
 
         (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
-                            tol= eigOpts.eigstol,
-                            maxiter=eigOpts.eigsiter)
+                                    tol=eigOpts.eigstol,
+                                    maxiter=eigOpts.eigsiter)
     elseif  eigOpts.eigmethod == "eig"
-        # we use a dense diagonalization 
+        # we use a dense diagonalization
         A = create_Hamiltonian(H)
-        if ~ issymmetric(A)
-            println("A is not symmetric")
-        end
+        # checkign that A is symetric
+        @assert issymmetric(A)
         (ev, psi) = eig(A)
 
     end
-
 
     # sorting the eigenvalues, eigs already providesd them within a vector
     ind = sortperm(ev)[1:H.Neigs];
@@ -214,13 +214,12 @@ function update_rho!(H::Ham, nocc::Int64)
 end
 
 function update_rhoa!(H::Ham)
-
     H.rhoa, H.drhoa = pseudocharge(H.gridpos, H.Ls, H.atoms,H.YukawaK,H.epsil0);
 end
 
 function create_Hamiltonian(H::Ham)
-    # create the matrix version of the Hmailtonian 
-      A = real(ifft(diagm(H.kmul[:])*fft( eye(length(H.kmul)),1),1 ));
+    # create the matrix version of the Hmailtonian
+      A = real(ifft(diagm(H.kmul[:])*fft(eye(length(H.kmul)),1),1));
       A += diagm(H.Vtot[:])
       # we symmetrize A
     return 0.5*(A + A')
@@ -248,6 +247,23 @@ end
 function inv_lap(H::Ham,x::Array{Float64,1})
     # inverse laplacian, to be used as a preconditioner for the
     # lobpcg algorithm
+
+    inv_kmul = zeros(size(H.kmul))
+    inv_kmul[1] = 0;
+    inv_kmul[2:end] = 1./H.kmul[2:end];
+
+    ytemp = inv_kmul.*fft(x);
+    return real(ifft(ytemp))
+end
+
+function prec(H::Ham,x::Array{Float64,1})
+    # preconditioner for lobpcg
+## matlab code to translate
+#     for ik = 1:nkpts
+#     X  = gkincell{ik};
+#     Y  = 27.0 + X.*(18.0 + X.*(12.0 + 8.0*X));
+#     p{ik}  = Y./(Y + 16.0*X.^4);
+# end;
 
     inv_kmul = zeros(size(H.kmul))
     inv_kmul[1] = 0;
@@ -791,4 +807,3 @@ function get_force!(H::Ham)
         atoms.force[i] = - sum(dV.*rhotot)*H.dx
     end
 end
-
