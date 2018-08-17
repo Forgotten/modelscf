@@ -342,12 +342,14 @@ function update_vtot!(H::Ham, mixOpts::andersonPrecMixOptions)
     smat = mixOpts.smat;
     iter = mixOpts.iter;
 
+    # TODO change this so this is properly modified inside the function
     (Vtotmix,ymat,smat) = prec_anderson_mix(H.Vtot,Vtotnew,
         betamix, ymat, smat, iter, mixdim, mixOpts.prec, mixOpts.precargs)
 
     # they are already modified inside the function
-    # mixOpts.ymat = ymat;
-    # mixOpts.smat = smat;
+    # just to be sure we can leave them here
+    mixOpts.ymat = ymat;
+    mixOpts.smat = smat;
     mixOpts.iter += 1;
 
     # updating total potential
