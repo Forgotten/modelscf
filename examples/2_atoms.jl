@@ -32,10 +32,10 @@ Natoms = 2; # number of atoms
 
 R = zeros(Natoms, 1); # this is defined as an 2D array
 for j = 1:Natoms
-  R[j] = Ls/(Natoms+1)*j
+  R[j] = Ls/(Natoms+1)+ 2*j
 end
 
-sigma  = ones(Natoms,1)*(2.0);  # insulator
+sigma  = ones(Natoms,1)*(1.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
 mass   = ones(Natoms,1)*42000.0;
@@ -65,4 +65,7 @@ scfOpts = scfOptions(1.e-10, 300, eigOpts, mixOpts)
 # running the scf iteration
 @time VtoterrHist = scf!(ham, scfOpts)
 
-length(VtoterrHist)
+println(length(VtoterrHist))
+get_force!(ham)
+
+println(ham.atoms.force)
