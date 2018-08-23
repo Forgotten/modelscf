@@ -1,4 +1,9 @@
 # script to check the accuracy of the Neural network electron density
+# In this case  we only use two atoms, (as defined below)
+
+# The neural network data was already computed in Python, we test that the 
+# approximation helps 
+
 include("../src/Atoms.jl")
 include("../src/scfOptions.jl")
 include("../src/anderson_mix.jl")
@@ -55,7 +60,7 @@ OutputRef =  h5read(Output_str_ref, "Output")
 
 @assert Nsamples == size(Input)[2]
 
-ii = 2
+ii = 100
 
 R = zeros(Natoms, 1); # this is defined as an 2D array
 # we compute the separation
@@ -90,7 +95,6 @@ eigOpts = eigOptions(1.e-12, 1000, "eigs");
 
 scfOpts = scfOptions(1.e-8, 300, eigOpts, mixOpts)
 
-
 plot(abs.(Output[:,ii] - OutputRef[:,ii]))
 println("Error of rho - rho_NN ",
         norm(Output[:,ii] - OutputRef[:,ii]))
@@ -110,6 +114,8 @@ forceNN = ham.atoms.force[:]
 # running the scf iteration
 @time VtoterrHist = scf!(ham, scfOpts)
 println(length(VtoterrHist))
+println("Error history is :")
+display(VtoterrHist)
 Vref = ham.Vtot
 
 plot(abs.(Vref - Vnew))

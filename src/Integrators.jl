@@ -1,8 +1,13 @@
-function  velocity_verlet{T<:AbstractFloat}(a::Function,
-                                              x::Array{T,1},
-                                              v::Array{T,1},
-                                              vdot::Array{T,1},
-                                              h::T)
+# Functions implementing the time evolution
+# We only implement (which seems to work) the velocity verlet algorithm. 
+
+#TODO: implement the Extended Lagrangian based methods and integrators
+
+function  velocity_verlet{T<:AbstractFloat}(a::Function,   # function providing the acceleration
+                                            x::Array{T,1}, # current position
+                                            v::Array{T,1}, # current speed
+                                            vdot::Array{T,1}, # current acceleration
+                                            h::T)           # delta time
 # modification to have only one evaluation of a per iteration
     v_half = v      + h/2 * vdot
     x_next = x      + h   * v_half
@@ -11,12 +16,12 @@ function  velocity_verlet{T<:AbstractFloat}(a::Function,
     return (x_next, v_next, vdot_next)
 end
 
-function time_evolution{T<:AbstractFloat}(Integrator::Function,
-                                          a::Function,
-                                          h::T,
-                                          Nsteps::Int64,
-                                          x0::Array{T,1},
-                                          x1::Array{T,1} )
+function time_evolution{T<:AbstractFloat}(Integrator::Function, # integrator 
+                                          a::Function,          # acceleration
+                                          h::T,                 # time step
+                                          Nsteps::Int64,        # number of stepd for evolution
+                                          x0::Array{T,1},       # initil guess
+                                          x1::Array{T,1} )      # initial+1 guess
 
 xArray = Array{T,2}(Nsteps+1, length(x0))
 vArray = Array{T,2}(Nsteps+1, length(x0))
