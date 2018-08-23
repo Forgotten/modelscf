@@ -1,4 +1,9 @@
-#test construction of the Hamiltonian
+# script to obtain the oscillating atoms using a vanilla verlet Integrator
+# The main idea is to build a reference model to study the behavior fo the 
+# Neural network accelerated Molecular dynamic. 
+
+# we use the modelscf to compute the forces, and the velocity verlet algorithm 
+# to evolve the system. 
 
 include("../src/Atoms.jl")
 include("../src/scfOptions.jl")
@@ -40,8 +45,11 @@ nocc   = ones(Natoms,1)*2;          # number of electrons per atom
 Z      = nocc;
 
 
-
 function forces(x::Array{Float64,1})
+    # input
+    #       x: vector with the position of the atoms
+    # output
+    #       f: forces at the center of the atoms
 
     R = reshape(x, length(x), 1) # we need to make it a two dimensional array
     # creating an atom structure
@@ -52,11 +60,10 @@ function forces(x::Array{Float64,1})
     # total number of occupied orbitals
     Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
 
-    # we set the options before hand
+    # setting the options for the scf iteration
     mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
-
-    eigOpts = eigOptions(1.e-12, 1000, "eigs");
-    scfOpts = scfOptions(1.e-10, 300, eigOpts, mixOpts)
+    eigOpts = eigOptions(1.e-8, 1000, "eigs");
+    scfOpts = scfOptions(1.e-6, 300, eigOpts, mixOpts)
 
     # initialize the potentials within the Hemiltonian, setting H[\rho_0]
     init_pot!(ham, Nocc)
@@ -65,13 +72,16 @@ function forces(x::Array{Float64,1})
     @time VtoterrHist = scf!(ham, scfOpts)
 
     if VtoterrHist[end] > scfOpts.SCFtol
-        println("convergence not achieved")
+        println("convergence not achieved!! ")
     end
 
+    # we compute the forces 
     get_force!(ham)
 
     return ham.atoms.force[:]
 end
+
+# Settign the time evolution
 
 dt = 0.01
 
