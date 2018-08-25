@@ -9,13 +9,11 @@ include("../src/hartree_pot_bc.jl")
 include("../src/pseudocharge.jl")
 include("../src/getocc.jl")
 
-using HDF5
 
-Nsamples = 5;
-
-dx = 0.25;
-Nunit = 8;
-Lat = 10;
+dx = 0.5;
+Nunit = 16;   # number of units
+Lat = 10;     # size of the lattice
+Ls = Nunit*Lat;
 # using the default values in Lin's code
 YukawaK = 0.0100
 n_extra = 10; # QUESTION: I don't know where this comes from
@@ -30,33 +28,19 @@ betamix = 0.5;
 mixdim = 10;
 
 Ndist  = 1;   # Temporary variable
-Natoms = round(Integer, Nunit / Ndist); # number of atoms
+Natoms = 2; # number of atoms
 
-sigma  = ones(Natoms,1)*(2.0);  # insulator
+R = zeros(Natoms, 1); # this is defined as an 2D array
+for j = 1:Natoms
+  R[j] = Ls/(Natoms+1)+ 2*j
+end
+
+sigma  = ones(Natoms,1)*(1.0);  # insulator
 omega  = ones(Natoms,1)*0.03;
 Eqdist = ones(Natoms,1)*10.0;
 mass   = ones(Natoms,1)*42000.0;
-nocc   = ones(Natoms,1);          # number of electrons per atom
-Z      = nocc
-
-Ns =round(Integer, Lat*Ndist/dx*Nunit)
-
-Input = zeros(Ns, Nsamples)
-Output = zeros(Ns, Nsamples)
-
-for ii = 1:Nsamples
-
-R = (Lat*Nunit)*rand(Natoms,1) ;
-
-# we make sure that the potential wells are not to close to each other
-while (minimum(diff(sort(R[:])))< 2*sigma[1,1] )
-    R = (Lat*Nunit)*rand(Natoms,1);
-end
-
-# R = zeros(Natoms, 1); # this is defined as an 2D array
-# for j = 1:Natoms
-#   R[j] = (j-0.5)*Lat*Ndist+dx;
-# end
+nocc   = ones(Natoms,1)*2;          # number of electrons per atom
+Z      = nocc;
 
 # creating an atom structure
 atoms = Atoms(Natoms, R, sigma,  omega,  Eqdist, mass, Z, nocc);
@@ -74,20 +58,14 @@ init_pot!(ham, Nocc)
 mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
 
 # we use the default options
-eigOpts = eigOptions(1e-12, 10000, "eigs");
+eigOpts = eigOptions(1.e-12, 1000, "eigs");
 
-scfOpts = scfOptions(1e-10,300, eigOpts, mixOpts)
-
-#scfOpts = scfOptions(eigOpts, mixOpts)
-# print(scfOpts)
+scfOpts = scfOptions(1.e-10, 300, eigOpts, mixOpts)
 
 # running the scf iteration
 @time VtoterrHist = scf!(ham, scfOpts)
 
-Input[:,ii] = ham.rhoa[:];
-Output[:,ii] = ham.rho[:];
+println(length(VtoterrHist))
+get_force!(ham)
 
-end
-
-# h5write("Input_Full_SCF.h5", "Input", Input)
-# h5write("Output_Full_SCF.h5", "Output", Output)
+println(ham.atoms.force)

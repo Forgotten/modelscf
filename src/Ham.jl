@@ -1,3 +1,5 @@
+include("lobpcg_sep.jl")
+
 mutable struct Ham
     Ns::Int64
     Ls::Float64
@@ -10,7 +12,7 @@ mutable struct Ham
     rhoa::Array{Float64,2}               # pseudo-charge for atoms (negative)
     rho::Array{Float64,2}                # electron density
     Vhar::Array{Float64,2}               # Hartree potential for both electron and nuclei
-    Vtot::Array{Float64,2}               # total energy
+    Vtot::Array{Float64,2}               # total potential
     drhoa::Array{Float64,2}              # derivative of the pseudo-charge (on each atom)
     ev::Array{Float64,1}
     psi::Array{Float64,2}
@@ -148,7 +150,7 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
         (ev,psi,nconv,niter,nmult,resid) = eigs(H,   # Hamiltonian
-                                                nev=H.Neigs, # number of eigs
+                                                nev=H.Neigs+4, # number of eigs
                                                 which=:SR, # small real part
                                                 ritzvec=true, # provide Ritz v
                                                 tol=eigOpts.eigstol, # tolerance
@@ -161,12 +163,19 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         prec(x) = inv_lap(H,x)
 
         (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
-                            tol= eigOpts.eigstol,
-                            maxiter=eigOpts.eigsiter)
+                                    tol=eigOpts.eigstol,
+                                    maxiter=eigOpts.eigsiter)
+    elseif  eigOpts.eigmethod == "eig"
+        # we use a dense diagonalization
+        A = create_Hamiltonian(H)
+        # checkign that A is symetric
+        @assert issymmetric(A)
+        (ev, psi) = eig(A)
+
     end
 
     # sorting the eigenvalues, eigs already providesd them within a vector
-    ind = sortperm(ev);
+    ind = sortperm(ev)[1:H.Neigs];
     # updating the eigenvalues
     H.ev = ev[ind]
     # updating the eigenvectors
@@ -205,8 +214,15 @@ function update_rho!(H::Ham, nocc::Int64)
 end
 
 function update_rhoa!(H::Ham)
-
     H.rhoa, H.drhoa = pseudocharge(H.gridpos, H.Ls, H.atoms,H.YukawaK,H.epsil0);
+end
+
+function create_Hamiltonian(H::Ham)
+    # create the matrix version of the Hmailtonian
+      A = real(ifft(diagm(H.kmul[:])*fft(eye(length(H.kmul)),1),1));
+      A += diagm(H.Vtot[:])
+      # we symmetrize A
+    return 0.5*(A + A')
 end
 
 function lap(H::Ham,x::Array{Float64,1})
@@ -231,6 +247,23 @@ end
 function inv_lap(H::Ham,x::Array{Float64,1})
     # inverse laplacian, to be used as a preconditioner for the
     # lobpcg algorithm
+
+    inv_kmul = zeros(size(H.kmul))
+    inv_kmul[1] = 0;
+    inv_kmul[2:end] = 1./H.kmul[2:end];
+
+    ytemp = inv_kmul.*fft(x);
+    return real(ifft(ytemp))
+end
+
+function prec(H::Ham,x::Array{Float64,1})
+    # preconditioner for lobpcg
+## matlab code to translate
+#     for ik = 1:nkpts
+#     X  = gkincell{ik};
+#     Y  = 27.0 + X.*(18.0 + X.*(12.0 + 8.0*X));
+#     p{ik}  = Y./(Y + 16.0*X.^4);
+# end;
 
     inv_kmul = zeros(size(H.kmul))
     inv_kmul[1] = 0;
@@ -325,12 +358,14 @@ function update_vtot!(H::Ham, mixOpts::andersonPrecMixOptions)
     smat = mixOpts.smat;
     iter = mixOpts.iter;
 
+    # TODO change this so this is properly modified inside the function
     (Vtotmix,ymat,smat) = prec_anderson_mix(H.Vtot,Vtotnew,
         betamix, ymat, smat, iter, mixdim, mixOpts.prec, mixOpts.precargs)
 
     # they are already modified inside the function
-    # mixOpts.ymat = ymat;
-    # mixOpts.smat = smat;
+    # just to be sure we can leave them here
+    mixOpts.ymat = ymat;
+    mixOpts.smat = smat;
     mixOpts.iter += 1;
 
     # updating total potential
@@ -466,7 +501,7 @@ function LDAexchange(H::Ham, rho::Array{Float64,2})
 
 end
 function LDAexchangeFunc(rho::Array{Float64,2})
-    
+
    v = -0.1*(3/pi)^(1/3) * rho.^(1/3);
    return v
 end
@@ -529,7 +564,7 @@ function update_psi_high!(H::Ham, eigOpts::eigOptions)
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
     if eigOpts.eigmethod == "eigs"
-        
+
         Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
         # TODO: make sure that eigs works with overloaded operators
         # TODO: take a look a the interface of eigs in Julia
@@ -694,7 +729,7 @@ function update_psi_AinB!(H::Ham, eigOpts::eigOptions,Orbitals_B::Array{Float64,
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
     if eigOpts.eigmethod == "eigs"
-        
+
         Hmatrix = lap(H,eye(H.Ns))+diagm(vec(H.Vtot));
         Gamma_B = Orbitals_B*Orbitals_B';
         Q = eye(size(Orbitals_B,1))-dx*Gamma_B;
@@ -772,4 +807,3 @@ function get_force!(H::Ham)
         atoms.force[i] = - sum(dV.*rhotot)*H.dx
     end
 end
-
