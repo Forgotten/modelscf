@@ -122,58 +122,58 @@ for ii = 1:Nsamples
 end
 #BadIdx = [ 197, 138 , 126, 83]
 
-## trying to fix the bad data points
-for jj = 1:length(BadIdx)
-    ii = BadIdx[jj]
-
-
-    R = zeros(Natoms, 1); # this is defined as an 2D array
-    # we compute the separation
-    ddx = ii*Ls/(2*Nsamples)
-    # make sure that the numner of atoms is equals to 2
-    @assert Natoms == 2
-    R[1] = Ls/2
-    R[2] = Ls/2 + 2*sigma[1] + ddx
-
-    # creating an atom structure
-    atoms = Atoms(Natoms, R, sigma,  omega,  Eqdist, mass, Z, nocc);
-
-    # allocating a Hamiltonian
-    ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0, Tbeta)
-    @assert  norm(Input[:,ii] - ham.rhoa[:]) < 1.e-8
-    # total number of occupied orbitals
-    Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
-
-    # initialize the potentials within the Hemiltonian, setting H[\rho_0]
-    init_pot!(ham, Nocc)
-
-    # we use the anderson mixing of the potential
-    mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
-
-    # we use the default options
-    eigOpts = eigOptions(1.e-12, 1000, "eig");
-
-    maxNumScfIt = 6000
-    scfOpts = scfOptions(1.e-10, maxNumScfIt, eigOpts, mixOpts)
-
-    # running the scf iteration
-    @time VtoterrHist = scf!(ham, scfOpts)
-    println(length(VtoterrHist))
-
-    if length(VtoterrHist) < maxNumScfIt
-        Output[:,ii] = ham.rho[:];
-    end
-
-    # Output[:,ii] = ham.rho[:];
-    #
-    # println(length(VtoterrHist))
-end
-
-Input_str = string("Input_KS_scf_", Natoms,"_check.h5")
-Output_str = string("Output_KS_scf_", Natoms,"_check.h5")
-
-isfile(Output_str) && rm(Output_str)
-isfile(Input_str)  && rm(Input_str)
-
-h5write(Input_str, "Input", Input)
-h5write(Output_str, "Output", Output)
+# ## trying to fix the bad data points
+# for jj = 1:length(BadIdx)
+#     ii = BadIdx[jj]
+#
+#
+#     R = zeros(Natoms, 1); # this is defined as an 2D array
+#     # we compute the separation
+#     ddx = ii*Ls/(2*Nsamples)
+#     # make sure that the numner of atoms is equals to 2
+#     @assert Natoms == 2
+#     R[1] = Ls/2
+#     R[2] = Ls/2 + 2*sigma[1] + ddx
+#
+#     # creating an atom structure
+#     atoms = Atoms(Natoms, R, sigma,  omega,  Eqdist, mass, Z, nocc);
+#
+#     # allocating a Hamiltonian
+#     ham = Ham(Lat, Nunit, n_extra, dx, atoms,YukawaK, epsil0, Tbeta)
+#     @assert  norm(Input[:,ii] - ham.rhoa[:]) < 1.e-8
+#     # total number of occupied orbitals
+#     Nocc = round(Integer, sum(atoms.nocc) / ham.nspin);
+#
+#     # initialize the potentials within the Hemiltonian, setting H[\rho_0]
+#     init_pot!(ham, Nocc)
+#
+#     # we use the anderson mixing of the potential
+#     mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
+#
+#     # we use the default options
+#     eigOpts = eigOptions(1.e-12, 1000, "eig");
+#
+#     maxNumScfIt = 6000
+#     scfOpts = scfOptions(1.e-10, maxNumScfIt, eigOpts, mixOpts)
+#
+#     # running the scf iteration
+#     @time VtoterrHist = scf!(ham, scfOpts)
+#     println(length(VtoterrHist))
+#
+#     if length(VtoterrHist) < maxNumScfIt
+#         Output[:,ii] = ham.rho[:];
+#     end
+#
+#     # Output[:,ii] = ham.rho[:];
+#     #
+#     # println(length(VtoterrHist))
+# end
+#
+# Input_str = string("Input_KS_scf_", Natoms,"_check.h5")
+# Output_str = string("Output_KS_scf_", Natoms,"_check.h5")
+#
+# isfile(Output_str) && rm(Output_str)
+# isfile(Input_str)  && rm(Input_str)
+#
+# h5write(Input_str, "Input", Input)
+# h5write(Output_str, "Output", Output)

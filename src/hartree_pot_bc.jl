@@ -33,7 +33,7 @@ function hartree_pot_bc_opt(rho::Array{Float64,2}, Ls::Float64,
 end
 
 
-@inline function inv_yukawa_fourier_mult!(R::Array{Complex128,2}, Ls::Float64,
+function inv_yukawa_fourier_mult!(R::Array{Complex128,2}, Ls::Float64,
                                           YukawaK::Float64 )
     c = (2 * pi / Ls)^2
     c1 = 4*pi
