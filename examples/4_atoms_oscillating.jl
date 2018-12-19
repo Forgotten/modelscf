@@ -37,7 +37,7 @@ Tbeta = au2K / T_elec;
 betamix = 0.5;
 mixdim = 10;
 
-Natoms = 3; # number of atoms
+Natoms = 4; # number of atoms
 
 sigma  = ones(Natoms,1)*(0.75);  # insulator
 omega  = ones(Natoms,1)*0.03;
@@ -96,7 +96,7 @@ dt = 0.02
 
 x0 = zeros(Natoms); # this is defined as an 2D array
 for j = 1:Natoms
-  x0[j] = 0 + 2*j
+  x0[j] = 0 + 1.5*j
 end
 
 x0[2] = 3.5

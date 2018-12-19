@@ -1,11 +1,11 @@
 # script to obtain the oscillating atoms using a vanilla verlet Integrator
-# The main idea is to build a reference model to study the behavior fo the 
-# Neural network accelerated Molecular dynamic. 
+# The main idea is to build a reference model to study the behavior fo the
+# Neural network accelerated Molecular dynamic.
 
-# we use the modelscf to compute the forces, and the velocity verlet algorithm 
-# to evolve the system. 
+# we use the modelscf to compute the forces, and the velocity verlet algorithm
+# to evolve the system.
 
-# in this case we save the evolution of the system in a hd5f file. 
+# in this case we save the evolution of the system in a hd5f file.
 
 include("../src/Atoms.jl")
 include("../src/scfOptions.jl")
@@ -76,7 +76,7 @@ function forces(x::Array{Float64,1})
         println("convergence not achieved!! ")
     end
 
-    # we compute the forces 
+    # we compute the forces
     get_force!(ham)
 
         # computing the energy
