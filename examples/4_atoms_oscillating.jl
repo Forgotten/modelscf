@@ -101,12 +101,12 @@ end
 
 x0[2] = 3.5
 
-v0 = [0.,0., 0.]
+v0 = [0.,0., 0., 0.]
 x1 = x0 + dt*v0
 
 (x, v, vdot, E) = time_evolution(velocity_verlet, x -> forces(x), dt, 30000, x0, x1)
 
-# Pos_str = string("Pos_KS_scf_", Natoms,"_sigma_", sigma[1],"_3_atoms.h5")
-# isfile(Pos_str) && rm(Pos_str)
-# h5write(Pos_str, "R", x)
+Pos_str = string("Pos_KS_scf_", Natoms,"_sigma_", sigma[1],"_atoms.h5")
+isfile(Pos_str) && rm(Pos_str)
+h5write(Pos_str, "R", x)
 
