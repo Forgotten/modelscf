@@ -41,8 +41,8 @@ gridposPer = zeros(3*Ns,1) # allocating as a 2D Array
 gridposPer[:,1] = collect(-Ns:2*Ns-1).'.*dx;
 
 
-sigmaMax = 6.0
-sigmaMin = 6.0
+sigmaMax = 4.0
+sigmaMin = 4.0
 coeffMin = 0.8   # min value for the Gaussian depth
 coeffMax = 1.2   # max value for the Gaussian depth
 
@@ -71,7 +71,7 @@ for ii = 1:Nsamples
     grispos = broadcast(-, gridposPer, R)
     grispos = broadcast(/, grispos, sigma)
     V = -exp.(-grispos.^2/2 )
-    V = reshape(sum( broadcast(*, V, coeff), 2), Ns,3)
+    V = reshape(sum(broadcast(*, V, coeff), 2), Ns,3)
     V = sum(V,2)
 
     H.Vtot = V;
