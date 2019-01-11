@@ -20,14 +20,14 @@ FFTW.set_num_threads(round(Integer,Sys.CPU_CORES/2))
 if length(ARGS) > 0
     Ne = parse(Int64,ARGS[1])
 else
-    Ne = 2
+    Ne = 8
 end
 # in this case we suppose a simple
 Nsamples = 20000;
 
 dx = 0.25
 Nunit = 8;
-Lat = 5;
+Lat = 10;
 
 Ls = Nunit * Lat;
 Ns = round(Integer, Ls / dx);
@@ -41,8 +41,8 @@ gridposPer = zeros(3*Ns,1) # allocating as a 2D Array
 gridposPer[:,1] = collect(-Ns:2*Ns-1).'.*dx;
 
 
-sigmaMax = 10.4
-sigmaMin = 10.6
+sigmaMax = 6.0
+sigmaMin = 6.0
 coeffMin = 0.8   # min value for the Gaussian depth
 coeffMax = 1.2   # max value for the Gaussian depth
 
@@ -63,7 +63,7 @@ for ii = 1:Nsamples
     sigma = sigmaMin + (sigmaMax-sigmaMin)*rand(1,Ne);
 
     # we make sure that the potential wells are not to close to each other
-    while (minimum(diff(sort(R[:])))< 2*sigmaMin )
+    while (minimum(diff(sort(vcat(R[:], R[:]-Lat*Nunit, R[:]+Lat*Nunit))))< 2*sigmaMin )
         R = (Lat*Nunit)*rand(1,Ne);
     end
 
