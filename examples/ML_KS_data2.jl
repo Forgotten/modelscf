@@ -7,6 +7,7 @@
 # we compute the eigenvalue problem H[V]\Psi = \Psi \Lambda,
 # where we are only interested in the first Ne eigenvectors
 # finaly we compute the charge density
+# we prune the casres in which the system is very sensitive 
 
 # We point out that we don't consider the chemical potential in this case
 #
@@ -55,29 +56,37 @@ Output = zeros(Ns, Nsamples)
 # testing the
 
 for ii = 1:Nsamples
+    minrhoR = 0
 
-    # we don't want the potentials too close to the boundary of
-    # the computational domain
-    R = (Lat*Nunit)*rand(1,Ne) ;
-    coeff = coeffMin + (coeffMax-coeffMin)*rand(1,Ne);
-    sigma = sigmaMin + (sigmaMax-sigmaMin)*rand(1,Ne);
+    while minrhoR < 0.01
 
-    # we make sure that the potential wells are not to close to each other
-    while (minimum(diff(sort(vcat(R[:], R[:]-Lat*Nunit, R[:]+Lat*Nunit))))< 2*sigmaMin )
-        R = (Lat*Nunit)*rand(1,Ne);
+        R = (Lat*Nunit)*rand(1,Ne) ;
+        coeff = coeffMin + (coeffMax-coeffMin)*rand(1,Ne);
+        sigma = sigmaMin + (sigmaMax-sigmaMin)*rand(1,Ne);
+        
+        # we make sure that the potential wells are not to close to each other
+        while (minimum(diff(sort(vcat(R[:], R[:]-Lat*Nunit, R[:]+Lat*Nunit))))< 2*sigmaMin )
+            R = (Lat*Nunit)*rand(1,Ne);
+        end
+
+        RIdx = [ indmin(abs(gridpos-R[ii])) for ii = 1:Ne]
+
+        grispos = broadcast(-, gridposPer, R)
+        grispos = broadcast(/, grispos, sigma)
+        V = -exp.(-grispos.^2/2 )
+        V = reshape(sum(broadcast(*, V, coeff), 2), Ns,3)
+        V = sum(V,2)
+
+        H.Vtot = V;
+
+        Psi = compute_psi(H, Ne, eigmethod = "eigs")
+        rho = compute_rho(H, Psi[1]);
+
+        minrhoR = minimum(rho[RIdx])
+
     end
 
-    println(ii)
-    grispos = broadcast(-, gridposPer, R)
-    grispos = broadcast(/, grispos, sigma)
-    V = -exp.(-grispos.^2/2 )
-    V = reshape(sum(broadcast(*, V, coeff), 2), Ns,3)
-    V = sum(V,2)
-
-    H.Vtot = V;
-
-    Psi = compute_psi(H, Ne);
-    rho = compute_rho(H, Psi[1]);
+    print(ii, '\t')
     println(Psi[2][end]-Psi[2][end-1])
 
     Input[:,ii] = V[:];
