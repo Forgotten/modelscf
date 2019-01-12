@@ -107,6 +107,15 @@ function lap(H::BabyHam,x::Array{Float64,2})
     return real(ifft(ytemp,1))
 end
 
+
+function create_Hamiltonian(H::BabyHam)
+    # create the matrix version of the Hmailtonian
+      A = real(ifft(diagm(H.kmul[:])*fft(eye(length(H.kmul)),1),1));
+      A += diagm(H.Vtot[:])
+      # we symmetrize A
+    return 0.5*(A + A')
+end
+
 function Vtot(H::BabyHam,x::Array{Float64,1})
     # application of the potential part of the Hamiltonian to a vector
     return (H.Vtot).*x
@@ -117,10 +126,13 @@ function Vtot(H::BabyHam, X::Array{Float64,2})
     return broadcast(*,H.Vtot, X)
 end
 
-function compute_psi(H::BabyHam, Neigs, eigstol=1e-12, eigsiter=10000 )
+function compute_psi(H::BabyHam, Neigs; eigstol=1e-12, 
+                                        eigsiter=10000,
+                                        eigmethod = "eigs" )
     # we need to add some options to the update
     # functio to solve the eigenvalue problem for a given rho and Vtot
 
+    if eigmethod == "eigs"
     (ev,psi,nconv,niter,nmult,resid) = eigs(H,   # Hamiltonian
                                                 nev=Neigs+3, # number of eigs
                                                 which=:SR, # small real part
@@ -128,6 +140,15 @@ function compute_psi(H::BabyHam, Neigs, eigstol=1e-12, eigsiter=10000 )
                                                 tol=eigstol, # tolerance
                                                 maxiter=eigsiter) #maxiter
     # sorting the eigenvalues, eigs already providesd them within a vector
+    elseif  eigmethod == "eig"
+        # we use a dense diagonalization
+        A = create_Hamiltonian(H)
+        # checkign that A is symetric
+        @assert issymmetric(A)
+        (ev, psi) = eig(A)
+
+    end
+
     ind = sortperm(ev);
     # return the eigenvectors
      (psi[:, ind[1:Neigs]], ev[1:Neigs+1]);

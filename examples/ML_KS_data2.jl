@@ -54,7 +54,9 @@ Input = zeros(Ns, Nsamples)
 Output = zeros(Ns, Nsamples)
 
 # testing the
-
+Psi = []
+rho = []
+V = []
 for ii = 1:Nsamples
     minrhoR = 0
 
@@ -69,7 +71,7 @@ for ii = 1:Nsamples
             R = (Lat*Nunit)*rand(1,Ne);
         end
 
-        RIdx = [ indmin(abs(gridpos-R[ii])) for ii = 1:Ne]
+        RIdx = [ indmin(abs.(gridpos-R[ii])) for ii = 1:Ne]
 
         grispos = broadcast(-, gridposPer, R)
         grispos = broadcast(/, grispos, sigma)
@@ -79,7 +81,7 @@ for ii = 1:Nsamples
 
         H.Vtot = V;
 
-        Psi = compute_psi(H, Ne, eigmethod = "eigs")
+        Psi = compute_psi(H, Ne, eigmethod = "eig")
         rho = compute_rho(H, Psi[1]);
 
         minrhoR = minimum(rho[RIdx])
