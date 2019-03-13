@@ -102,7 +102,7 @@ end
 v0 = [0.,0.]
 x1 = x0 + dt*v0
 
-(x, v, vdot, E) = time_evolution(velocity_verlet, x -> forces(x), dt, 3000, x0, x1)
+(x, v, vdot, E) = time_evolution(velocity_verlet, x -> forces(x), dt, 100, x0, x1)
 
 # Pos_str = string("Pos_KS_scf_", Natoms,"_sigma_", sigma[1],".h5")
 # isfile(Pos_str) && rm(Pos_str)

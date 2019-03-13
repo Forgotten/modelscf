@@ -13,6 +13,7 @@ function  velocity_verlet{T<:AbstractFloat}(a::Function,   # function providing 
     x_next = x      + h   * v_half
     (vdot_next, U_next) = a(x_next)
     v_next = v_half + h/2 * vdot_next
+    # computing the energy
     E_next = 0.5*sum(v_next.^2) + U_next
     return (x_next, v_next, vdot_next, E_next)
 end
