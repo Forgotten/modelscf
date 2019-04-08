@@ -29,12 +29,12 @@ Ap = X'*AX;
 
 # symmetrizing Ap
 Ap = (Ap' + Ap)/2; ##
-(lambda, V) = eig(Ap);
+(lambda, V) = eigen(Ap);
 X = X*V;
 AX = AX*V;
 P = [];
 AP = [];
-D = diagm(lambda);
+D = diagm(0 => lambda);
 
 # absolute residual
 absr = zeros(k);
@@ -79,7 +79,7 @@ for iter = 1:maxiter
     end
     # Projecting the preconditioned residual
     W = W - U*(U'*W);
-    W = qr(W, thin=true)[1];
+    W = qr(W).Q[:,:];
     AW = H*W;
     # Recalculate AX and AP in every 20 iterations
     if mod(iter, 20) == 19
@@ -95,7 +95,7 @@ for iter = 1:maxiter
         AU = hcat(AX, AW);
     end
     Ap = U'*AU; Ap = (Ap' + Ap)/2; ##
-    (lambda, V) = eig(Ap);
+    (lambda, V) = eigen(Ap);
     # Update the basis
     Q = HL_orth(k, V);
     X  = U*Q[:, 1:k];
@@ -103,7 +103,7 @@ for iter = 1:maxiter
     AX = AU*Q[:, 1:k];
     AP = AU*Q[:, k+1:2*k];
     lambda = lambda[1:k];
-    D = diagm(lambda)
+    D = diagm(0 =>lambda)
         
     iteration = iter
 end
@@ -131,7 +131,7 @@ function HL_orth(n::Int64, Z::Array{T, 2}) where T <: Number
 #
 
     m  = size(Z)[1];
-    Q0 = qr(Z[1:n, n+1:m]', thin = true)[1];
+    Q0 = qr(Z[1:n, n+1:m]').Q[:,:];
     Q  = hcat(Z[1:m, 1:n], Z[1:m, n+1:m]*Q0);
 
     return Q

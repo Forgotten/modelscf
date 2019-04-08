@@ -7,21 +7,15 @@
 
 # in this case we save the evolution of the system in a hd5f file.
 
-include("../src/Atoms.jl")
-include("../src/scfOptions.jl")
-include("../src/anderson_mix.jl")
-include("../src/kerker_mix.jl")
-include("../src/Ham.jl")
-include("../src/hartree_pot_bc.jl")
-include("../src/pseudocharge.jl")
-include("../src/getocc.jl")
-include("../src/Integrators.jl")
+push!(LOAD_PATH, "../src/")
+using modelscf
 using HDF5
+using LinearAlgebra
 
 # flag to save the data
 
 # number of MD simulations and
-Nit = 3000
+Nit = 300
 
 # getting all the parameters
 dx = 0.5;
@@ -53,7 +47,7 @@ mass   = ones(Natoms,1)*42000.0;
 nocc   = ones(Natoms,1)*2;          # number of electrons per atom
 Z      = nocc;
 
-function forces(x::Array{Float64,1})
+function forces(x::Array{Float64,1}, rho0::Array{Float64,2})
     # input
     #       x: vector with the position of the atoms
     # output
@@ -70,11 +64,17 @@ function forces(x::Array{Float64,1})
 
     # setting the options for the scf iteration
     mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
-    eigOpts = eigOptions(1.e-10, 1000, "eig");
+    eigOpts = eigOptions(1.e-10, 1000, "eigs");
     scfOpts = scfOptions(1.e-8, 300, eigOpts, mixOpts)
 
     # initialize the potentials within the Hemiltonian, setting H[\rho_0]
     init_pot!(ham, Nocc)
+
+    # for the first iteration
+    if norm(rho0) == 0
+        rho0[:,:] = ham.rho
+    end
+    ham.rho = rho0
 
     # running the scf iteration
     VtoterrHist = scf!(ham, scfOpts)
@@ -83,9 +83,12 @@ function forces(x::Array{Float64,1})
         println("convergence not achieved!! ")
     end
 
+    rho0[:,:] = ham.rho
+
+    println(length(VtoterrHist))
+    
     # we compute the forces
     get_force!(ham)
-
     # computing the energy
     Vhar = hartree_pot_bc(ham.rho+ham.rhoa,ham);
 
@@ -104,14 +107,17 @@ for j = 1:Natoms
   x0[j] = (j-0.5)*Lat*Ndist+dx;
 end
 
+# initial density 
+rhoI = zeros(Ns,1)
+
 x0[1] = x0[1] + 1.0
 
 v0 = zeros(Natoms)
 x1 = x0 + dt*v0
 
 #### Computing the trajectories
-
-(X_traj, v, vdot) = time_evolution(velocity_verlet, x -> forces(x), dt, Nit, x0, x1)
+# TODO modify this to take in account the last 
+(X_traj, v, vdot) = time_evolution(velocity_verlet, x -> forces(x, rhoI), dt, Nit, x0, x1)
 
 Rho    = zeros(Ns, Nit)
 Etotal = zeros(1, Nit)

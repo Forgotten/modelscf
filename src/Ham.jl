@@ -97,7 +97,7 @@ end
 function *(H::Ham, X::Array{Float64,2})
     # Function  to  overload the application of the Hamiltonian times a matrix
     Y = zeros(size(X));
-    A_mul_B!(Y, H, X)
+    mul!(Y, H, X)
     return Y
     # # new version that acts on the full matrices
     # Y_lap  = lap(H,X);
@@ -110,9 +110,10 @@ end
 function LinearAlgebra.mul!(Y::Array{Float64,2}, H::Ham, V::Array{Float64,2})
     # in place matrix matrix multiplication
     @assert(size(Y) == size(V))
-    for ii = 1:size(V,2)
-        Y[:,ii] = H*V[:,ii]
-    end
+    Y[:,:] = lap(H,V)
+    Y += Vtot(H,V)
+
+    return Y
 end
 
 # optimized version for eigs (it uses sub arrays to bypass the inference step)
@@ -159,7 +160,7 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         # TODO: this has a bug somewhere !!!! fix me!!!!
     elseif  eigOpts.eigmethod == "lobpcg_sep"
         # not working... to be fixed
-        X0 = qr(rand(H.Ns, H.Neigs), thin = true)[1]
+        X0 = qr(rand(H.Ns, H.Neigs)).Q[:,:]
         prec(x) = inv_lap(H,x)
 
         (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
@@ -235,7 +236,7 @@ function lap(H::Ham,x::Array{Float64,1})
     return real(ifft(ytemp))
 end
 
-function lap(H::Ham,x::Array{Float64,2})
+function lap(H::Ham, x::Array{Float64,2})
     # application of the laplacian part to a matrix.
     # TODO: this can be optimized using rfft
     # TODO: we can surther accelerate this using a in-place multiplication
@@ -244,7 +245,7 @@ function lap(H::Ham,x::Array{Float64,2})
     return real(ifft(ytemp,1))
 end
 
-function inv_lap(H::Ham,x::Array{Float64,1})
+function inv_lap(H::Ham, x::Array{Float64,1})
     # inverse laplacian, to be used as a preconditioner for the
     # lobpcg algorithm
 
@@ -256,7 +257,7 @@ function inv_lap(H::Ham,x::Array{Float64,1})
     return real(ifft(ytemp))
 end
 
-function prec(H::Ham,x::Array{Float64,1})
+function prec(H::Ham, x::Array{Float64,1})
     # preconditioner for lobpcg
 ## matlab code to translate
 #     for ik = 1:nkpts
@@ -265,11 +266,17 @@ function prec(H::Ham,x::Array{Float64,1})
 #     p{ik}  = Y./(Y + 16.0*X.^4);
 # end;
 
+    # inv_kmul = zeros(size(H.kmul))
+    # inv_kmul[1] = 0;
+    # inv_kmul[2:end] = 1./H.kmul[2:end];
+
     inv_kmul = zeros(size(H.kmul))
     inv_kmul[1] = 0;
-    inv_kmul[2:end] = 1 ./H.kmul[2:end];
+    inv_kmul[2:end] = H.kmul[2:end];
 
-    ytemp = inv_kmul.*fft(x);
+    Y = 27.0 + inv_kmul.*(18.0 + inv_kmul.*(12.0 + 8.0*inv_kmul));
+    yfft = Y./(Y + 16.0*inv_kmul.^4);
+    ytemp = yfft.*fft(x);
     return real(ifft(ytemp))
 end
 
@@ -290,8 +297,6 @@ function hartree_pot_bc(rho, H::Ham)
     # we call the (hopefully compiler optmized version)
     return hartree_pot_bc(rho, H.Ls, H.YukawaK, H.epsil0)
 end
-
-
 
 
 function update_vtot!(H::Ham, mixOpts)
@@ -398,7 +403,7 @@ function update_pot!(H::Ham)
 
     # NOTE: H.Fband is only the band energy here.  The real total energy
     # is calculated using the formula below:
-    H.Ftot = H.Fband + 1/2 * sum((H.rhoa-H.rho).*H.Vhar)*dx;
+    H.Ftot = H.Fband + 1/2 * sum((H.rhoa-H.rho).*H.Vhar)*H.dx;
     return (Vtotnew,Verr) # returns the differnece betwen two consecutive iterations
 end
 
