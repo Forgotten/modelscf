@@ -82,7 +82,7 @@ function fermidirac(ev,efermi,Tbeta::Float64)
 #
 # usage: [f,g] = fermidirac(ev, efermi, Tbeta);
 
-f = 1./(1+exp.(Tbeta*(ev-efermi)))
+f = 1 ./(1 .+exp.(Tbeta*(ev .- efermi)))
 
 return f
     # if( nargout > 1 )

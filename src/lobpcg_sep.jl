@@ -41,7 +41,7 @@ absr = zeros(k);
 # relative residual
 relr = zeros(k);
 
-iter = 1;
+iteration = 1;
 for iter = 1:maxiter
     # Check convergence
     R = AX - X*D;
@@ -104,16 +104,18 @@ for iter = 1:maxiter
     AP = AU*Q[:, k+1:2*k];
     lambda = lambda[1:k];
     D = diagm(lambda)
+        
+    iteration = iter
 end
 
 X = X[:, 1:k];
 
-return (lambda, X, iter)
+return (lambda, X, iteration)
 
 end
 
 # qwe define a parametric function action on 2D arrays of any type
-function HL_orth{T <: Number}(n::Int64, Z::Array{T,2})
+function HL_orth(n::Int64, Z::Array{T, 2}) where T <: Number
 # Q = HL_orth(n, Z)
 #
 # Input:

@@ -21,11 +21,11 @@ function  kerker_mix(res, KerkerB::Float64, kmult, YukawaK::Float64, epsil0::Flo
 
 resfft = fft(res);
 
-resfft = ( epsil0 / (4*pi) * (kmult+YukawaK^2) )./
-  ( KerkerB + epsil0 / (4*pi) * (kmult+YukawaK^2) ) .* resfft;
+resfft = ( epsil0 / (4*pi) * (kmult .+ YukawaK^2) )./
+  ( KerkerB .+ epsil0 / (4*pi) * (kmult .+ YukawaK^2) ) .* resfft;
 
 resprec = real(ifft(resfft));
-resprec = resprec - mean(resprec);
+resprec = resprec .- mean(resprec);
 
 return resprec
 

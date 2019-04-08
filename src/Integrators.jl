@@ -3,11 +3,12 @@
 
 #TODO: implement the Extended Lagrangian based methods and integrators
 
-function  velocity_verlet{T<:AbstractFloat}(a::Function,   # function providing the acceleration
+function  velocity_verlet(a::Function,   # function providing the acceleration
                                             x::Array{T,1}, # current position
                                             v::Array{T,1}, # current speed
                                             vdot::Array{T,1}, # current acceleration
-                                            h::T)           # delta time
+                                            h::T) where T <: Number           # delta time
+    
 # modification to have only one evaluation of a per iteration
     v_half = v      + h/2 * vdot
     x_next = x      + h   * v_half
@@ -16,16 +17,16 @@ function  velocity_verlet{T<:AbstractFloat}(a::Function,   # function providing 
     return (x_next, v_next, vdot_next)
 end
 
-function time_evolution{T<:AbstractFloat}(Integrator::Function, # integrator 
+function time_evolution(Integrator::Function, # integrator 
                                           a::Function,          # acceleration
                                           h::T,                 # time step
                                           Nsteps::Int64,        # number of stepd for evolution
-                                          x0::Array{T,1},       # initil guess
-                                          x1::Array{T,1} )      # initial+1 guess
+                                          x0::Array{T,1},       # initial guess
+                                          x1::Array{T,1} ) where T <: Number      # initial+1 guess
 
-xArray = Array{T,2}(Nsteps+1, length(x0))
-vArray = Array{T,2}(Nsteps+1, length(x0))
-aArray = Array{T,2}(Nsteps+1, length(x0))
+xArray = Array{T,2}(undef, Nsteps+1, length(x0))
+vArray = Array{T,2}(undef, Nsteps+1, length(x0))
+aArray = Array{T,2}(undef, Nsteps+1, length(x0))
 
 println("initial conditions")
 xArray[1,:] =  x0
