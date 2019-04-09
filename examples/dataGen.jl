@@ -15,7 +15,7 @@ using LinearAlgebra
 # flag to save the data
 
 # number of MD simulations and
-Nit = 300
+Nit = 3
 
 # getting all the parameters
 dx = 0.5;
@@ -74,7 +74,10 @@ function forces(x::Array{Float64,1}, rho0::Array{Float64,2})
     if norm(rho0) == 0
         rho0[:,:] = ham.rho
     end
-    ham.rho = rho0
+    ham.rho = reshape(rho0, Ns, 1)
+
+    (Vnew, err) = update_pot!(ham)
+    ham.Vtot = Vnew
 
     # running the scf iteration
     VtoterrHist = scf!(ham, scfOpts)
@@ -86,7 +89,7 @@ function forces(x::Array{Float64,1}, rho0::Array{Float64,2})
     rho0[:,:] = ham.rho
 
     println(length(VtoterrHist))
-    
+
     # we compute the forces
     get_force!(ham)
     # computing the energy
@@ -107,7 +110,7 @@ for j = 1:Natoms
   x0[j] = (j-0.5)*Lat*Ndist+dx;
 end
 
-# initial density 
+# initial density
 rhoI = zeros(Ns,1)
 
 x0[1] = x0[1] + 1.0
@@ -116,7 +119,7 @@ v0 = zeros(Natoms)
 x1 = x0 + dt*v0
 
 #### Computing the trajectories
-# TODO modify this to take in account the last 
+# TODO modify this to take in account the last
 (X_traj, v, vdot) = time_evolution(velocity_verlet, x -> forces(x, rhoI), dt, Nit, x0, x1)
 
 Rho    = zeros(Ns, Nit)
