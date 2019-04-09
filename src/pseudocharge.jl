@@ -15,7 +15,7 @@ R     = atoms.R;
 rhoa = zeros(Nsglb);
 
     for j=1:Natoms
-        d = R[j] - gridpos;
+        d = R[j] .- gridpos;
         d = d - round.(Integer, d/Ls)*Ls;
         # Note: Z has minus sign in front of it!
         rhoa = rhoa - Z[j]./sqrt(2*pi*sigma[j]^2) .* (exp.(-0.5*(d./sigma[j]).^2 ));
@@ -24,7 +24,7 @@ rhoa = zeros(Nsglb);
 drhoa = zeros(Nsglb, Natoms);
 
     for j=1:Natoms
-        d = R[j] - gridpos;
+        d = R[j] .- gridpos;
         d = d - round.(Integer, d/Ls)*Ls;
         drhoa[:,j] = drhoa[:,j] - Z[j] ./sqrt(2*pi*sigma[j]^2)./sigma[j]^2 .* (exp.(-0.5*(d./sigma[j]).^2)).*d;
     end

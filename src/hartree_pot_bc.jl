@@ -9,7 +9,7 @@ function hartree_pot_bc(rho::Array{Float64,2}, Ls::Float64, YukawaK::Float64, ep
     # Use Yukawa rather than the bare Coulomb potential.  The method does
     # not depend critically on the fact that the Coulomb kernel is to be
     # used.
-    invkx2 = [0;1./(kx[2:end].^2+YukawaK^2)];
+    invkx2 = [0;1 ./(kx[2:end].^2 .+ YukawaK^2)];
     # invkx2 = [1/YukawaK^2;1./(kx(2:end).^2+YukawaK^2)];
     # The 1/YukawaK^2 factor is not important for neutral defect calculation, but
     # might be important for the charged defect calculation.
@@ -33,7 +33,7 @@ function hartree_pot_bc_opt(rho::Array{Float64,2}, Ls::Float64,
 end
 
 
-@inline function inv_yukawa_fourier_mult!(R::Array{Complex128,2}, Ls::Float64,
+@inline function inv_yukawa_fourier_mult!(R::Array{ComplexF64,2}, Ls::Float64,
                                           YukawaK::Float64 )
     c = (2 * pi / Ls)^2
     c1 = 4*pi
@@ -58,7 +58,7 @@ function hartree_pot_bc_opt_vec(rho::Vector{Float64}, Ls::Float64,
 end
 
 
-@inline function inv_yukawa_fourier_mult_vec!(R::Vector{Complex128}, Ls::Float64,
+@inline function inv_yukawa_fourier_mult_vec!(R::Vector{ComplexF64}, Ls::Float64,
                                               YukawaK::Float64 )
     c = (2 * pi / Ls)^2
     c1 = 4*pi
