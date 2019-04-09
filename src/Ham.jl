@@ -160,12 +160,13 @@ function update_psi!(H::Ham, eigOpts::eigOptions)
         # TODO: this has a bug somewhere !!!! fix me!!!!
     elseif  eigOpts.eigmethod == "lobpcg_sep"
         # not working... to be fixed
-        X0 = qr(rand(H.Ns, H.Neigs)).Q[:,:]
-        prec(x) = inv_lap(H,x)
+        X0 = qr(rand(H.Ns, H.Neigs)).Q[:,1:H.Neigs]
+        precond(x) = inv_lap(H,x)
 
-        (ev,psi, iter) = lobpcg_sep(H, X0, prec, H.Neigs,
+        (ev,psi, iter) = lobpcg_sep(H, X0, precond, H.Neigs,
                                     tol=eigOpts.eigstol,
                                     maxiter=eigOpts.eigsiter)
+
     elseif  eigOpts.eigmethod == "eig"
         # we use a dense diagonalization
         A = create_Hamiltonian(H)
@@ -274,8 +275,8 @@ function prec(H::Ham, x::Array{Float64,1})
     inv_kmul[1] = 0;
     inv_kmul[2:end] = H.kmul[2:end];
 
-    Y = 27.0 + inv_kmul.*(18.0 + inv_kmul.*(12.0 + 8.0*inv_kmul));
-    yfft = Y./(Y + 16.0*inv_kmul.^4);
+    Y = 27.0 .+ inv_kmul.*(18.0 .+ inv_kmul.*(12.0 .+ 8.0 .*inv_kmul));
+    yfft = Y./(Y + 16.0 .*inv_kmul.^4);
     ytemp = yfft.*fft(x);
     return real(ifft(ytemp))
 end
@@ -355,7 +356,6 @@ function update_vtot!(H::Ham, mixOpts::andersonPrecMixOptions)
     # I added the signature
 
     (Vtotnew,Verr) = update_pot!(H)
-
 
     betamix = mixOpts.betamix;
     mixdim = mixOpts.mixdim;

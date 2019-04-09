@@ -64,7 +64,8 @@ function forces(x::Array{Float64,1}, rho0::Array{Float64,2})
 
     # setting the options for the scf iteration
     mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
-    eigOpts = eigOptions(1.e-10, 1000, "eigs");
+    # eigOpts = eigOptions(1.e-10, 1000, "eigs");
+    eigOpts = eigOptions(1.e-10, 1000, "lobpcg_sep");
     scfOpts = scfOptions(1.e-8, 300, eigOpts, mixOpts)
 
     # initialize the potentials within the Hemiltonian, setting H[\rho_0]
@@ -149,8 +150,7 @@ for ii = 1:Nit
     mixOpts = andersonMixOptions(ham.Ns, betamix, mixdim )
 
     # we use the default options
-    eigOpts = eigOptions(1.e-12, 1000, "eig");
-
+    eigOpts = eigOptions(1.e-12, 1000, "eigs");
     scfOpts = scfOptions(1.e-10, 3000, eigOpts, mixOpts)
 
     # running the scf iteration
